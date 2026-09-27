@@ -1004,9 +1004,6 @@ export default function Dashboard() {
             lastSleepCycle={
               lastSleepCycle
             }
-            avgSleepCycle={
-              avgSleepCycle
-            }
           />
 
 
