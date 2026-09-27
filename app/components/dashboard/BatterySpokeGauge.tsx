@@ -83,9 +83,6 @@ export default function BatterySpokeGauge({
           {batteryPercent}%
         </span>
 
-        <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-1">
-          {batteryVolts.toFixed(2)}V Li-Ion Battery
-        </span>
 
       </div>
 
