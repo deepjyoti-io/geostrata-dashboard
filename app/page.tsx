@@ -37,24 +37,24 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// --- Flawless Symmetrical Radial Arc Gauge Component ---
+// --- Fixed 180-Degree Semicircle Gauge ---
 const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: number; batteryPercent: number }) => {
-  const totalSpokes = 28;
+  const totalSpokes = 18; // Match chunky look from reference
   const activeSpokes = Math.round((batteryPercent / 100) * totalSpokes);
 
   return (
-    <div className="relative flex flex-col items-center justify-center my-auto py-2">
-      <svg className="w-60 h-36 overflow-visible" viewBox="0 0 200 145">
+    <div className="relative flex flex-col items-center justify-center my-auto w-full max-w-[280px] mx-auto pt-6 pb-2">
+      <svg className="w-full h-auto overflow-visible" viewBox="0 0 220 120">
         {Array.from({ length: totalSpokes }).map((_, i) => {
-          // Perfectly symmetric 220-degree sweep from -200 deg (left) to +20 deg (right) centered at -90 deg (top)
-          const angle = -200 + (i * 220) / (totalSpokes - 1);
+          // Strict 180-degree semicircle sweep from -180 (left) to 0 (right)
+          const angle = -180 + (i * 180) / (totalSpokes - 1);
           const radians = (angle * Math.PI) / 180;
           const isActive = i < activeSpokes;
 
-          const cx = 100;
-          const cy = 100;
-          const rInner = 62;
-          const rOuter = 82;
+          const cx = 110;
+          const cy = 110; // Flat bottom aligns perfectly horizontal here
+          const rInner = 70;
+          const rOuter = 105;
 
           const x1 = cx + rInner * Math.cos(radians);
           const y1 = cy + rInner * Math.sin(radians);
@@ -69,17 +69,22 @@ const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: num
               x2={x2}
               y2={y2}
               stroke={isActive ? "#00e676" : "#1e2333"}
-              strokeWidth="4.5"
+              strokeWidth="8"
               strokeLinecap="round"
+              className={isActive ? "drop-shadow-[0_0_5px_rgba(0,230,118,0.3)]" : ""}
             />
           );
         })}
       </svg>
 
-      {/* Centered Overlay Text */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-3">
-        <span className="text-3xl font-black text-white tracking-tight">{batteryPercent}%</span>
-        <span className="text-[11px] text-slate-400 font-mono mt-0.5">{batteryVolts.toFixed(2)}V Li-Ion Battery</span>
+      {/* Text perfectly nestled in the empty cavity to prevent overlap */}
+      <div className="absolute bottom-2 w-full flex flex-col items-center justify-center">
+        <span className="text-4xl font-black text-white tracking-tight leading-none drop-shadow-md">
+          {batteryPercent}%
+        </span>
+        <span className="text-[11px] text-slate-400 font-mono mt-1.5">
+          {batteryVolts.toFixed(2)}V Li-Ion Battery
+        </span>
       </div>
     </div>
   );
@@ -91,7 +96,6 @@ export default function Dashboard() {
   const [latest, setLatest] = useState<TelemetryRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Dynamic Sleep Cycle Intervals
   const [lastSleepCycle, setLastSleepCycle] = useState<number>(15);
   const [avgSleepCycle, setAvgSleepCycle] = useState<number>(15);
 
@@ -441,7 +445,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Symmetrical Semicircle Gauge */}
+            {/* Perfect 180-Degree Semicircle Gauge */}
             <BatterySpokeGauge batteryVolts={currentBattery} batteryPercent={batteryPercent} />
 
             <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex justify-between items-center">
