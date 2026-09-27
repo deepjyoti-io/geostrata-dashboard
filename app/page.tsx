@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { 
   LayoutDashboard, Activity, Wifi, Download, 
   Calendar, Layers, BatteryCharging, ArrowUpRight, ShieldCheck,
-  FileText, X, CheckCircle2, RefreshCw, MapPin, Zap, Thermometer, Droplets
+  FileText, X, CheckCircle2, RefreshCw, MapPin, Zap, Thermometer, Droplets, Clock
 } from 'lucide-react';
 
 interface TelemetryRecord {
@@ -37,17 +37,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// --- Custom Spoke Semi-Circle Radial Arc Gauge Component ---
+// --- Properly Aligned Spoke Semicircle Battery Gauge ---
 const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: number; batteryPercent: number }) => {
-  const totalSpokes = 28;
+  const totalSpokes = 26;
   const activeSpokes = Math.round((batteryPercent / 100) * totalSpokes);
 
   return (
-    <div className="relative flex flex-col items-center justify-center my-2">
-      <svg className="w-64 h-36 overflow-visible" viewBox="0 0 200 110">
+    <div className="relative flex flex-col items-center justify-center my-auto py-2">
+      <svg className="w-56 h-32" viewBox="0 0 200 115">
         {Array.from({ length: totalSpokes }).map((_, i) => {
-          // Angle ranges from -135deg to +45deg (semicircle arc)
-          const angle = -140 + (i * 280) / (totalSpokes - 1);
+          const angle = -145 + (i * 290) / (totalSpokes - 1);
           const radians = (angle * Math.PI) / 180;
           const isActive = i < activeSpokes;
 
@@ -69,17 +68,16 @@ const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: num
               x2={x2}
               y2={y2}
               stroke={isActive ? "#00e676" : "#1e2333"}
-              strokeWidth="5"
+              strokeWidth="4.5"
               strokeLinecap="round"
-              className="transition-all duration-300"
             />
           );
         })}
       </svg>
 
-      {/* Center Value */}
-      <div className="absolute bottom-2 flex flex-col items-center">
-        <span className="text-4xl font-extrabold text-white tracking-tight">{batteryPercent}%</span>
+      {/* Centered Value Overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
+        <span className="text-3xl font-black text-white tracking-tight">{batteryPercent}%</span>
         <span className="text-[11px] text-slate-400 font-mono mt-0.5">{batteryVolts.toFixed(2)}V Li-Ion Battery</span>
       </div>
     </div>
@@ -91,6 +89,10 @@ export default function Dashboard() {
   const [filteredData, setFilteredData] = useState<TelemetryRecord[]>([]);
   const [latest, setLatest] = useState<TelemetryRecord | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Dynamic Sleep Cycle Intervals
+  const [lastSleepCycle, setLastSleepCycle] = useState<number>(15);
+  const [avgSleepCycle, setAvgSleepCycle] = useState<number>(15);
 
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [chartRange, setChartRange] = useState<'1D' | '1W' | '1M' | 'ALL' | 'CUSTOM'>('1D');
@@ -115,9 +117,41 @@ export default function Dashboard() {
       setLatest(records[0]);
       const chronological = [...records].reverse();
       setData(chronological);
+      
+      // Calculate dynamic sleep cycle and average
+      calculateSleepCycles(chronological);
+
       applyQuickFilter('1D', chronological);
     }
     setLoading(false);
+  };
+
+  const calculateSleepCycles = (chronologicalData: TelemetryRecord[]) => {
+    if (chronologicalData.length >= 2) {
+      const lastIndex = chronologicalData.length - 1;
+      const tLatest = new Date(chronologicalData[lastIndex].timestamp).getTime();
+      const tPrev = new Date(chronologicalData[lastIndex - 1].timestamp).getTime();
+      const diffMins = Math.round(Math.abs(tLatest - tPrev) / (1000 * 60));
+
+      if (diffMins > 0 && diffMins < 1440) {
+        setLastSleepCycle(diffMins);
+      }
+
+      let totalDiff = 0;
+      let count = 0;
+      for (let i = 1; i < chronologicalData.length; i++) {
+        const t1 = new Date(chronologicalData[i].timestamp).getTime();
+        const t0 = new Date(chronologicalData[i - 1].timestamp).getTime();
+        const gap = Math.abs(t1 - t0) / (1000 * 60);
+        if (gap > 0 && gap < 1440) {
+          totalDiff += gap;
+          count++;
+        }
+      }
+      if (count > 0) {
+        setAvgSleepCycle(Math.round(totalDiff / count));
+      }
+    }
   };
 
   useEffect(() => {
@@ -378,37 +412,37 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* TOP ROW: Battery Radial Gauge (Matching Reference) + Main Area Chart */}
+        {/* TOP ROW: Battery Radial Gauge + Main Area Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Widget 1: Power & Battery Health (Radial Arc Gauge with Spokes) */}
+          {/* Widget 1: Power System Health (Aligned & Dynamic Sleep Cycle Calculation) */}
           <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-2">
                 <h2 className="text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
                   <BatteryCharging className="w-4 h-4 text-[#00e676]" /> Power System Health
                 </h2>
-                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">18650 Cell</span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">18650 CELL</span>
               </div>
 
-              {/* Sub Metrics Header */}
+              {/* Dynamic Sleep Cycle Sub-Header */}
               <div className="flex justify-around text-center py-2 border-b border-white/5 text-xs">
                 <div>
                   <span className="text-slate-500 block text-[10px]">OUTPUT</span>
                   <span className="font-bold text-white flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-400"/> {currentBattery.toFixed(2)} V</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">SLEEP CYCLE</span>
-                  <span className="font-bold text-white">15 Mins</span>
+                  <span className="text-slate-500 block text-[10px]">LAST SLEEP</span>
+                  <span className="font-bold text-white flex items-center gap-1"><Clock className="w-3 h-3 text-cyan-400"/> {lastSleepCycle} Mins</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">HEALTH</span>
-                  <span className="font-bold text-[#00e676]">Optimal</span>
+                  <span className="text-slate-500 block text-[10px]">AVG CYCLE</span>
+                  <span className="font-bold text-[#00e676]">{avgSleepCycle} Mins</span>
                 </div>
               </div>
             </div>
 
-            {/* Custom Radial Arc Gauge with Spokes */}
+            {/* Properly Centered Semicircle Gauge */}
             <BatterySpokeGauge batteryVolts={currentBattery} batteryPercent={batteryPercent} />
 
             <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex justify-between items-center">
@@ -417,7 +451,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 2: Main Thermal Propagation Trend Chart */}
+          {/* Widget 2: Thermal Propagation Trend Chart */}
           <div className="lg:col-span-8 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
@@ -503,75 +537,88 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* BOTTOM ROW: Subsurface Sensor Table + Dynamic SIM800L Location Map */}
+        {/* BOTTOM ROW: Split Sensor Matrix (DS18B20 Table + Ambient Side Card) + Tactical Red Spot Map */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Widget 3: Subsurface & Ambient Sensor Channels Table */}
-          <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-5">
+          {/* Widget 3: Sensor Matrix Breakdown (DS18B20 Probes on Left + Ambient DHT22 on Right) */}
+          <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
                 <Thermometer className="w-4 h-4 text-cyan-400" /> Sensor Matrix Breakdown
               </h2>
-              <span className="text-xs text-slate-400 font-mono">5 Active Channels</span>
+              <span className="text-xs text-slate-400 font-mono">DS18B20 + Ambient</span>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider">
-                    <th className="pb-3 font-medium">Sensor Module</th>
-                    <th className="pb-3 font-medium">Target Level</th>
-                    <th className="pb-3 font-medium">Live Reading</th>
-                    <th className="pb-3 font-medium">Channel State</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-yellow-500"></span> DS18B20 Probe #1
-                    </td>
-                    <td className="py-3 text-slate-400">10cm Subsurface</td>
-                    <td className="py-3 font-bold text-yellow-400">{latest?.t10?.toFixed(2) || '--'} °C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400"></span> DS18B20 Probe #2
-                    </td>
-                    <td className="py-3 text-slate-400">30cm Subsurface</td>
-                    <td className="py-3 font-bold text-cyan-400">{latest?.t30?.toFixed(2) || '--'} °C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-400"></span> DS18B20 Probe #3
-                    </td>
-                    <td className="py-3 text-slate-400">50cm Subsurface</td>
-                    <td className="py-3 font-bold text-indigo-400">{latest?.t50?.toFixed(2) || '--'} °C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span> DHT22 Module (Temp)
-                    </td>
-                    <td className="py-3 text-slate-400">Ambient Surface</td>
-                    <td className="py-3 font-bold text-emerald-400">{latest?.ambient?.toFixed(2) || '--'} °C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-purple-400"></span> DHT22 Module (RH)
-                    </td>
-                    <td className="py-3 text-slate-400">Relative Humidity</td>
-                    <td className="py-3 font-bold text-purple-400">{latest?.humidity?.toFixed(1) || '--'} %</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 my-auto">
+              {/* Left Side: DS18B20 Subsurface Probes Only */}
+              <div className="md:col-span-7 border-r border-white/5 pr-4">
+                <p className="text-[11px] text-slate-500 uppercase font-mono mb-2">DS18B20 Subsurface Probes</p>
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider">
+                      <th className="pb-2 font-medium">Sensor Module</th>
+                      <th className="pb-2 font-medium">Depth Level</th>
+                      <th className="pb-2 font-medium">Live Reading</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    <tr>
+                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-400"></span> DS18B20 #1
+                      </td>
+                      <td className="py-2.5 text-slate-400">10cm Subsurface</td>
+                      <td className="py-2.5 font-bold text-amber-400">{latest?.t10?.toFixed(2) || '--'} °C</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400"></span> DS18B20 #2
+                      </td>
+                      <td className="py-2.5 text-slate-400">30cm Subsurface</td>
+                      <td className="py-2.5 font-bold text-cyan-400">{latest?.t30?.toFixed(2) || '--'} °C</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-400"></span> DS18B20 #3
+                      </td>
+                      <td className="py-2.5 text-slate-400">50cm Subsurface</td>
+                      <td className="py-2.5 font-bold text-indigo-400">{latest?.t50?.toFixed(2) || '--'} °C</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Right Side: Ambient Temperature & Humidity */}
+              <div className="md:col-span-5 flex flex-col justify-center space-y-3 pl-2">
+                <p className="text-[11px] text-slate-500 uppercase font-mono">Ambient Climate (DHT22)</p>
+                
+                <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                      <Thermometer className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Ambient Temp</span>
+                      <span className="text-sm font-bold text-white">{latest?.ambient?.toFixed(2) || '--'} °C</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                      <Droplets className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Relative Humidity</span>
+                      <span className="text-sm font-bold text-white">{latest?.humidity?.toFixed(1) || '--'} %</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Widget 4: Dynamic SIM800L Node Location Map (Matching Reference Layout) */}
+          {/* Widget 4: Dynamic Tactical Red Spot Location Map (Matching Reference Image) */}
           <div className="lg:col-span-5 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -582,7 +629,7 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Dark Styled Map Overlay Frame */}
+            {/* Tactical Dark Map Container with Red Pulsing Spot Marker */}
             <div className="w-full h-48 rounded-xl overflow-hidden border border-white/10 relative bg-[#07080c]">
               <iframe
                 title="Node Location Map"
@@ -590,16 +637,25 @@ export default function Dashboard() {
                 height="100%"
                 frameBorder="0"
                 scrolling="no"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapLon - 0.02}%2C${mapLat - 0.02}%2C${mapLon + 0.02}%2C${mapLat + 0.02}&layer=mapnik&marker=${mapLat}%2C${mapLon}`}
-                className="opacity-70 invert contrast-125 saturate-50 pointer-events-auto"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapLon - 0.02}%2C${mapLat - 0.02}%2C${mapLon + 0.02}%2C${mapLat + 0.02}&layer=mapnik`}
+                className="opacity-60 invert contrast-150 saturate-0 pointer-events-auto"
               ></iframe>
 
-              {/* Map Floating Location Badge */}
-              <div className="absolute bottom-3 left-3 bg-[#0d0f17]/90 backdrop-blur-md p-2.5 rounded-xl border border-white/10 shadow-lg flex items-center gap-2.5">
-                <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></div>
-                <div>
-                  <p className="text-[11px] font-bold text-white">SIM800L Telemetry Station #01</p>
-                  <p className="text-[10px] text-slate-400 font-mono">Lat: {mapLat.toFixed(4)}°, Lon: {mapLon.toFixed(4)}°</p>
+              {/* Centered Red Spot Target Overlay */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full border border-rose-500/30 bg-rose-500/10 animate-ping absolute"></div>
+                <div className="w-12 h-12 rounded-full border border-rose-500/50 bg-rose-500/20 absolute"></div>
+                <div className="w-6 h-6 rounded-full bg-rose-600 border-2 border-white shadow-[0_0_15px_rgba(244,63,94,0.9)] flex items-center justify-center z-10">
+                  <div className="w-2 h-2 rounded-full bg-white"></div>
+                </div>
+
+                {/* Tactical Location Label */}
+                <div className="absolute bottom-3 left-3 bg-[#0d0f17]/95 backdrop-blur-md px-3 py-2 rounded-xl border border-rose-500/30 shadow-2xl flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                  <div>
+                    <p className="text-[11px] font-bold text-white">SIM800L Node Location</p>
+                    <p className="text-[10px] text-rose-400 font-mono">Lat: {mapLat.toFixed(4)}°, Lon: {mapLon.toFixed(4)}°</p>
+                  </div>
                 </div>
               </div>
             </div>
