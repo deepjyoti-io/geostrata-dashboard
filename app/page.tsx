@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { 
   LayoutDashboard, Activity, Wifi, Download, 
   Calendar, Layers, BatteryCharging, ArrowUpRight, ShieldCheck,
-  FileText, X, CheckCircle2, RefreshCw, MapPin
+  FileText, X, CheckCircle2, RefreshCw, MapPin, Zap, Thermometer, Droplets
 } from 'lucide-react';
 
 interface TelemetryRecord {
@@ -36,6 +36,55 @@ const getSignalInfo = (csq?: number) => {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// --- Custom Spoke Semi-Circle Radial Arc Gauge Component ---
+const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: number; batteryPercent: number }) => {
+  const totalSpokes = 28;
+  const activeSpokes = Math.round((batteryPercent / 100) * totalSpokes);
+
+  return (
+    <div className="relative flex flex-col items-center justify-center my-2">
+      <svg className="w-64 h-36 overflow-visible" viewBox="0 0 200 110">
+        {Array.from({ length: totalSpokes }).map((_, i) => {
+          // Angle ranges from -135deg to +45deg (semicircle arc)
+          const angle = -140 + (i * 280) / (totalSpokes - 1);
+          const radians = (angle * Math.PI) / 180;
+          const isActive = i < activeSpokes;
+
+          const cx = 100;
+          const cy = 95;
+          const rInner = 68;
+          const rOuter = 86;
+
+          const x1 = cx + rInner * Math.cos(radians);
+          const y1 = cy + rInner * Math.sin(radians);
+          const x2 = cx + rOuter * Math.cos(radians);
+          const y2 = cy + rOuter * Math.sin(radians);
+
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={isActive ? "#00e676" : "#1e2333"}
+              strokeWidth="5"
+              strokeLinecap="round"
+              className="transition-all duration-300"
+            />
+          );
+        })}
+      </svg>
+
+      {/* Center Value */}
+      <div className="absolute bottom-2 flex flex-col items-center">
+        <span className="text-4xl font-extrabold text-white tracking-tight">{batteryPercent}%</span>
+        <span className="text-[11px] text-slate-400 font-mono mt-0.5">{batteryVolts.toFixed(2)}V Li-Ion Battery</span>
+      </div>
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const [data, setData] = useState<TelemetryRecord[]>([]);
@@ -192,6 +241,11 @@ export default function Dashboard() {
     );
   }
 
+  const currentBattery = latest?.battery || 0;
+  const batteryPercent = Math.min(100, Math.max(0, Math.round((currentBattery / 4.2) * 100)));
+  const mapLat = latest?.lat && latest.lat !== 0 ? latest.lat : 26.1445;
+  const mapLon = latest?.lon && latest.lon !== 0 ? latest.lon : 91.7362;
+
   return (
     <div className="flex h-screen bg-[#07080c] text-slate-200 font-sans overflow-hidden">
       
@@ -245,7 +299,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* DYNAMIC NODE MODAL POPUP */}
+      {/* NODE MODAL POPUP */}
       {selectedNode === 'sim800l' && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#12141f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
@@ -301,6 +355,8 @@ export default function Dashboard() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+        
+        {/* Top Header Bar */}
         <div className="flex justify-between items-center pb-2 border-b border-white/5">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-white tracking-tight">Dashboard Overview</h1>
@@ -322,38 +378,46 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* TOP ROW: Battery Radial Gauge (Matching Reference) + Main Area Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Widget 1: Power & Battery Health (Radial Arc Gauge with Spokes) */}
           <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#00e676]" /> Subsurface Thermal Health
-              </h2>
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Sensors Active</span>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
+                  <BatteryCharging className="w-4 h-4 text-[#00e676]" /> Power System Health
+                </h2>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">18650 Cell</span>
+              </div>
+
+              {/* Sub Metrics Header */}
+              <div className="flex justify-around text-center py-2 border-b border-white/5 text-xs">
+                <div>
+                  <span className="text-slate-500 block text-[10px]">OUTPUT</span>
+                  <span className="font-bold text-white flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-400"/> {currentBattery.toFixed(2)} V</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[10px]">SLEEP CYCLE</span>
+                  <span className="font-bold text-white">15 Mins</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[10px]">HEALTH</span>
+                  <span className="font-bold text-[#00e676]">Optimal</span>
+                </div>
+              </div>
             </div>
 
-            <div className="relative flex flex-col items-center justify-center my-4">
-              <div className="w-44 h-44 rounded-full border-8 border-slate-800 border-t-[#00e676] border-r-[#00e676] border-b-indigo-500 flex flex-col items-center justify-center shadow-inner relative">
-                <span className="text-3xl font-extrabold text-white tracking-tight">{latest?.t10?.toFixed(1) || '--'}°C</span>
-                <span className="text-[11px] text-slate-400 mt-1">Mean Soil Temp (10cm)</span>
-              </div>
-            </div>
+            {/* Custom Radial Arc Gauge with Spokes */}
+            <BatterySpokeGauge batteryVolts={currentBattery} batteryPercent={batteryPercent} />
 
-            <div className="grid grid-cols-3 gap-2 text-center pt-4 border-t border-white/5">
-              <div className="bg-[#12141f] p-2.5 rounded-xl">
-                <p className="text-[10px] text-amber-400 font-medium uppercase">10cm</p>
-                <p className="text-sm font-bold text-white mt-0.5">{latest?.t10?.toFixed(1)}°</p>
-              </div>
-              <div className="bg-[#12141f] p-2.5 rounded-xl">
-                <p className="text-[10px] text-cyan-400 font-medium uppercase">30cm</p>
-                <p className="text-sm font-bold text-white mt-0.5">{latest?.t30?.toFixed(1)}°</p>
-              </div>
-              <div className="bg-[#12141f] p-2.5 rounded-xl">
-                <div className="text-[10px] text-indigo-400 font-medium uppercase">50cm</div>
-                <p className="text-sm font-bold text-white mt-0.5">{latest?.t50?.toFixed(1)}°</p>
-              </div>
+            <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex justify-between items-center">
+              <span>Power Source: Solar + Li-Ion</span>
+              <span className="text-emerald-400 font-mono">Deep Sleep Mode Active</span>
             </div>
           </div>
 
+          {/* Widget 2: Main Thermal Propagation Trend Chart */}
           <div className="lg:col-span-8 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
@@ -438,7 +502,195 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* BOTTOM ROW: Subsurface Sensor Table + Dynamic SIM800L Location Map */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Widget 3: Subsurface & Ambient Sensor Channels Table */}
+          <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-5">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Thermometer className="w-4 h-4 text-cyan-400" /> Sensor Matrix Breakdown
+              </h2>
+              <span className="text-xs text-slate-400 font-mono">5 Active Channels</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider">
+                    <th className="pb-3 font-medium">Sensor Module</th>
+                    <th className="pb-3 font-medium">Target Level</th>
+                    <th className="pb-3 font-medium">Live Reading</th>
+                    <th className="pb-3 font-medium">Channel State</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  <tr>
+                    <td className="py-3 font-medium text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500"></span> DS18B20 Probe #1
+                    </td>
+                    <td className="py-3 text-slate-400">10cm Subsurface</td>
+                    <td className="py-3 font-bold text-yellow-400">{latest?.t10?.toFixed(2) || '--'} °C</td>
+                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-medium text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400"></span> DS18B20 Probe #2
+                    </td>
+                    <td className="py-3 text-slate-400">30cm Subsurface</td>
+                    <td className="py-3 font-bold text-cyan-400">{latest?.t30?.toFixed(2) || '--'} °C</td>
+                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-medium text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-indigo-400"></span> DS18B20 Probe #3
+                    </td>
+                    <td className="py-3 text-slate-400">50cm Subsurface</td>
+                    <td className="py-3 font-bold text-indigo-400">{latest?.t50?.toFixed(2) || '--'} °C</td>
+                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-medium text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span> DHT22 Module (Temp)
+                    </td>
+                    <td className="py-3 text-slate-400">Ambient Surface</td>
+                    <td className="py-3 font-bold text-emerald-400">{latest?.ambient?.toFixed(2) || '--'} °C</td>
+                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
+                  </tr>
+                  <tr>
+                    <td className="py-3 font-medium text-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-400"></span> DHT22 Module (RH)
+                    </td>
+                    <td className="py-3 text-slate-400">Relative Humidity</td>
+                    <td className="py-3 font-bold text-purple-400">{latest?.humidity?.toFixed(1) || '--'} %</td>
+                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Widget 4: Dynamic SIM800L Node Location Map (Matching Reference Layout) */}
+          <div className="lg:col-span-5 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-rose-400" /> Node Geo-Location
+              </h2>
+              <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-mono">
+                SIM800L Cell LBS
+              </span>
+            </div>
+
+            {/* Dark Styled Map Overlay Frame */}
+            <div className="w-full h-48 rounded-xl overflow-hidden border border-white/10 relative bg-[#07080c]">
+              <iframe
+                title="Node Location Map"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapLon - 0.02}%2C${mapLat - 0.02}%2C${mapLon + 0.02}%2C${mapLat + 0.02}&layer=mapnik&marker=${mapLat}%2C${mapLon}`}
+                className="opacity-70 invert contrast-125 saturate-50 pointer-events-auto"
+              ></iframe>
+
+              {/* Map Floating Location Badge */}
+              <div className="absolute bottom-3 left-3 bg-[#0d0f17]/90 backdrop-blur-md p-2.5 rounded-xl border border-white/10 shadow-lg flex items-center gap-2.5">
+                <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></div>
+                <div>
+                  <p className="text-[11px] font-bold text-white">SIM800L Telemetry Station #01</p>
+                  <p className="text-[10px] text-slate-400 font-mono">Lat: {mapLat.toFixed(4)}°, Lon: {mapLon.toFixed(4)}°</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+              <span>Triangulated via GSM Towers</span>
+              <span className="text-indigo-400 font-mono">airtelgprs.com</span>
+            </div>
+          </div>
+
+        </div>
+
       </main>
+
+      {/* GENERATE REPORT MODAL */}
+      {isReportOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0d0f17] border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-5">
+            
+            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-bold text-white text-base">Export Telemetry Report</h3>
+              </div>
+              <button onClick={() => setIsReportOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">From Date & Time</label>
+              <input 
+                type="datetime-local" 
+                value={reportFrom}
+                onChange={e => setReportFrom(e.target.value)}
+                className="w-full bg-[#12141f] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">To Date & Time</label>
+              <input 
+                type="datetime-local" 
+                value={reportTo}
+                onChange={e => setReportTo(e.target.value)}
+                className="w-full bg-[#12141f] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-2">Select Export Format</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setReportFormat('CSV')}
+                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${reportFormat === 'CSV' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#12141f] border-white/5 text-slate-400 hover:text-white'}`}
+                >
+                  <CheckCircle2 className={`w-4 h-4 ${reportFormat === 'CSV' ? 'text-indigo-400' : 'opacity-0'}`} /> CSV Spreadsheet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportFormat('PDF')}
+                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${reportFormat === 'PDF' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#12141f] border-white/5 text-slate-400 hover:text-white'}`}
+                >
+                  <CheckCircle2 className={`w-4 h-4 ${reportFormat === 'PDF' ? 'text-indigo-400' : 'opacity-0'}`} /> PDF Document
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button 
+                type="button" 
+                onClick={() => setIsReportOpen(false)}
+                className="flex-1 bg-[#12141f] hover:bg-white/5 text-slate-300 text-xs py-2.5 rounded-xl font-medium border border-white/5 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleGenerateReport}
+                disabled={isExporting}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs py-2.5 rounded-xl font-medium transition shadow-lg flex items-center justify-center gap-2"
+              >
+                {isExporting ? 'Generating...' : 'Download Report'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
