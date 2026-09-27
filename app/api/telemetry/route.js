@@ -8,7 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { timestamp, t10, t30, t50, ambient, humidity, battery, csq } = body;
+    const { timestamp, t10, t30, t50, ambient, humidity, battery, csq, lat, lon } = body;
 
     const payload = {
       t10: parseFloat(t10),
@@ -18,6 +18,8 @@ export async function POST(request) {
       humidity: parseFloat(humidity),
       battery: parseFloat(battery),
       csq: csq !== undefined ? parseInt(csq) : 0,
+      lat: lat !== undefined ? parseFloat(lat) : 0.0,
+      lon: lon !== undefined ? parseFloat(lon) : 0.0,
     };
 
     if (timestamp) {

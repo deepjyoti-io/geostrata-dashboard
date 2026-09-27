@@ -18,6 +18,8 @@ interface TelemetryRecord {
   humidity: number;
   battery: number;
   csq?: number;
+  lat?: number;
+  lon?: number;
 }
 
 const getSignalInfo = (csq?: number) => {
@@ -41,7 +43,6 @@ export default function Dashboard() {
   const [latest, setLatest] = useState<TelemetryRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // UI States
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [chartRange, setChartRange] = useState<'1D' | '1W' | '1M' | 'ALL' | 'CUSTOM'>('1D');
   const [startDate, setStartDate] = useState('');
@@ -54,7 +55,7 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: telemetry, error } = await supabase
+    const { data: telemetry } = await supabase
       .from('telemetry')
       .select('*')
       .order('timestamp', { ascending: false })
@@ -119,10 +120,10 @@ export default function Dashboard() {
     const records = (reportRows || data) as TelemetryRecord[];
 
     if (reportFormat === 'CSV') {
-      const headers = ['Timestamp', '10cm Depth (°C)', '30cm Depth (°C)', '50cm Depth (°C)', 'Ambient (°C)', 'Humidity (%)', 'Battery (V)', 'Signal CSQ'];
+      const headers = ['Timestamp', '10cm (°C)', '30cm (°C)', '50cm (°C)', 'Ambient (°C)', 'Humidity (%)', 'Battery (V)', 'CSQ', 'Lat', 'Lon'];
       const rows = records.map(r => [
         `"${new Date(r.timestamp).toLocaleString()}"`,
-        r.t10, r.t30, r.t50, r.ambient, r.humidity, r.battery, r.csq ?? 0
+        r.t10, r.t30, r.t50, r.ambient, r.humidity, r.battery, r.csq ?? 0, r.lat ?? 0, r.lon ?? 0
       ]);
       const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
       const encodedUri = encodeURI(csvContent);
@@ -154,7 +155,7 @@ export default function Dashboard() {
               <table>
                 <thead>
                   <tr>
-                    <th>Timestamp</th><th>10cm (°C)</th><th>30cm (°C)</th><th>50cm (°C)</th><th>Ambient (°C)</th><th>Humidity (%)</th><th>Battery (V)</th><th>CSQ Signal</th>
+                    <th>Timestamp</th><th>10cm (°C)</th><th>30cm (°C)</th><th>50cm (°C)</th><th>Ambient (°C)</th><th>Humidity (%)</th><th>Battery (V)</th><th>CSQ</th><th>Latitude</th><th>Longitude</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,7 +164,7 @@ export default function Dashboard() {
                       <td>${new Date(r.timestamp).toLocaleString()}</td>
                       <td>${r.t10?.toFixed(2)}</td><td>${r.t30?.toFixed(2)}</td><td>${r.t50?.toFixed(2)}</td>
                       <td>${r.ambient?.toFixed(2)}</td><td>${r.humidity?.toFixed(1)}</td><td>${r.battery?.toFixed(2)}</td>
-                      <td>${r.csq ?? 0}/31</td>
+                      <td>${r.csq ?? 0}/31</td><td>${r.lat ?? 0}</td><td>${r.lon ?? 0}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -213,7 +214,6 @@ export default function Dashboard() {
             </a>
           </nav>
 
-          {/* Interactive Nodes Section */}
           <div className="mt-8">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-3">Active Nodes</p>
             <div className="space-y-2">
@@ -245,7 +245,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* NODE MODAL POPUP */}
+      {/* DYNAMIC NODE MODAL POPUP */}
       {selectedNode === 'sim800l' && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#12141f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
@@ -279,11 +279,19 @@ export default function Dashboard() {
               </div>
               
               <div className="bg-[#07080c] p-4 rounded-xl border border-white/5 flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-rose-400 shrink-0" />
+                <MapPin className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-slate-500 mb-1">Approximate Location</p>
-                  <p className="text-sm text-slate-200 font-medium">Guwahati, Assam, India</p>
-                  <p className="text-[11px] text-slate-400 font-mono mt-1">Lat: 26.1445° N, Lon: 91.7362° E</p>
+                  <p className="text-xs text-slate-500 mb-1">Cellular Location (LBS Triangulation)</p>
+                  {latest?.lat && latest?.lon && (latest.lat !== 0 || latest.lon !== 0) ? (
+                    <>
+                      <p className="text-sm text-slate-200 font-medium">Cell Tower Fixed</p>
+                      <p className="text-[11px] text-[#00e676] font-mono mt-1">
+                        Lat: {latest.lat.toFixed(6)}°, Lon: {latest.lon.toFixed(6)}°
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-400 italic">Location Pending First Transmission...</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -433,4 +441,4 @@ export default function Dashboard() {
       </main>
     </div>
   );
-}   
+}
