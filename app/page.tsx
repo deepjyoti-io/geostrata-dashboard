@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { 
   LayoutDashboard, Activity, Wifi, Download, 
   Calendar, Layers, BatteryCharging, ArrowUpRight, ShieldCheck,
-  FileText, X, CheckCircle2, RefreshCw
+  FileText, X, CheckCircle2, RefreshCw, MapPin
 } from 'lucide-react';
 
 interface TelemetryRecord {
@@ -17,7 +17,7 @@ interface TelemetryRecord {
   ambient: number;
   humidity: number;
   battery: number;
-  csq?: number; // SIM800L Signal Quality (0 - 31)
+  csq?: number;
 }
 
 const getSignalInfo = (csq?: number) => {
@@ -41,19 +41,17 @@ export default function Dashboard() {
   const [latest, setLatest] = useState<TelemetryRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Chart Filtering States
+  // UI States
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [chartRange, setChartRange] = useState<'1D' | '1W' | '1M' | 'ALL' | 'CUSTOM'>('1D');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  // Report Modal States
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportFrom, setReportFrom] = useState('');
   const [reportTo, setReportTo] = useState('');
   const [reportFormat, setReportFormat] = useState<'CSV' | 'PDF'>('CSV');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Initial Fetch
   const fetchData = async () => {
     setLoading(true);
     const { data: telemetry, error } = await supabase
@@ -78,7 +76,6 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Quick Date Filtering for Chart
   const applyQuickFilter = (range: '1D' | '1W' | '1M' | 'ALL', sourceData = data) => {
     setChartRange(range);
     if (sourceData.length === 0) return;
@@ -98,7 +95,6 @@ export default function Dashboard() {
     setFilteredData(filtered.length > 0 ? filtered : sourceData);
   };
 
-  // Custom Date Filter for Chart
   const applyCustomFilter = () => {
     if (!startDate || !endDate) return;
     setChartRange('CUSTOM');
@@ -112,7 +108,6 @@ export default function Dashboard() {
     setFilteredData(filtered);
   };
 
-  // Report Generator Handler
   const handleGenerateReport = async () => {
     setIsExporting(true);
     let query = supabase.from('telemetry').select('*').order('timestamp', { ascending: true });
@@ -138,7 +133,6 @@ export default function Dashboard() {
       link.click();
       document.body.removeChild(link);
     } else {
-      // PDF Printable View
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(`
@@ -197,16 +191,12 @@ export default function Dashboard() {
     );
   }
 
-  const currentBattery = latest?.battery || 0;
-  const batteryPercent = Math.min(100, Math.max(0, Math.round((currentBattery / 4.2) * 100)));
-
   return (
     <div className="flex h-screen bg-[#07080c] text-slate-200 font-sans overflow-hidden">
       
       {/* LEFT SIDEBAR */}
       <aside className="w-64 bg-[#0d0f17] border-r border-white/5 flex flex-col justify-between p-4 shrink-0">
         <div>
-          {/* App Logo */}
           <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-white/5">
             <div className="bg-[#00e676]/10 p-2 rounded-lg border border-[#00e676]/20">
               <Layers className="text-[#00e676] w-5 h-5" />
@@ -217,31 +207,30 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Cleaned Nav Items */}
           <nav className="space-y-1">
             <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#161926] text-white font-medium text-sm border-l-2 border-[#00e676]">
               <LayoutDashboard className="w-4 h-4 text-[#00e676]" /> Dashboard
             </a>
-            
-            {/* Dynamic SIM800L Signal Quality Badge */}
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 text-sm">
-              <Wifi className={`w-4 h-4 ${latest?.csq && latest.csq >= 8 ? 'text-emerald-400' : 'text-yellow-400'}`} /> 
-              <span>SIM800L Signal</span> 
-              
-              {(() => {
-                const signal = getSignalInfo(latest?.csq);
-                return (
-                  <span className={`ml-auto text-[10px] border px-2 py-0.5 rounded-full font-mono flex items-center gap-1 ${signal.color}`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                    {signal.text}
-                  </span>
-                );
-              })()}
-            </div>
           </nav>
+
+          {/* Interactive Nodes Section */}
+          <div className="mt-8">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-3">Active Nodes</p>
+            <div className="space-y-2">
+              <button 
+                onClick={() => setSelectedNode('sim800l')}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#161926] text-slate-300 hover:text-white font-medium text-sm transition border border-transparent hover:border-white/5"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  SIM800L Node
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* User / Station Footer */}
         <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center font-bold text-xs text-indigo-300">
@@ -256,10 +245,54 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* NODE MODAL POPUP */}
+      {selectedNode === 'sim800l' && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#12141f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Activity className="w-5 h-5 text-[#00e676]" /> SIM800L Node Details
+              </h3>
+              <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-white transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-[#07080c] p-4 rounded-xl border border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Wifi className="w-5 h-5 text-indigo-400" />
+                  <div>
+                    <p className="text-xs text-slate-500">Network Strength</p>
+                    <p className="text-sm font-medium text-slate-200">GPRS (airtelgprs.com)</p>
+                  </div>
+                </div>
+                {(() => {
+                  const signal = getSignalInfo(latest?.csq);
+                  return (
+                    <span className={`text-xs border px-3 py-1.5 rounded-lg font-mono flex items-center gap-2 ${signal.color}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                      {signal.text}
+                    </span>
+                  );
+                })()}
+              </div>
+              
+              <div className="bg-[#07080c] p-4 rounded-xl border border-white/5 flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-rose-400 shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Approximate Location</p>
+                  <p className="text-sm text-slate-200 font-medium">Guwahati, Assam, India</p>
+                  <p className="text-[11px] text-slate-400 font-mono mt-1">Lat: 26.1445° N, Lon: 91.7362° E</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
-        
-        {/* Top Action Bar */}
         <div className="flex justify-between items-center pb-2 border-b border-white/5">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-white tracking-tight">Dashboard Overview</h1>
@@ -281,10 +314,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* TOP GRID: System Health (Gauge) + Main Trend Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Widget 1: Subsurface System Health */}
           <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
@@ -293,7 +323,6 @@ export default function Dashboard() {
               <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Sensors Active</span>
             </div>
 
-            {/* Circular Gauge Representation */}
             <div className="relative flex flex-col items-center justify-center my-4">
               <div className="w-44 h-44 rounded-full border-8 border-slate-800 border-t-[#00e676] border-r-[#00e676] border-b-indigo-500 flex flex-col items-center justify-center shadow-inner relative">
                 <span className="text-3xl font-extrabold text-white tracking-tight">{latest?.t10?.toFixed(1) || '--'}°C</span>
@@ -301,7 +330,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Sub-Metrics Row */}
             <div className="grid grid-cols-3 gap-2 text-center pt-4 border-t border-white/5">
               <div className="bg-[#12141f] p-2.5 rounded-xl">
                 <p className="text-[10px] text-amber-400 font-medium uppercase">10cm</p>
@@ -318,10 +346,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 2: Main Thermal Trend Chart */}
           <div className="lg:col-span-8 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
-            
-            {/* Chart Header + Date Selector Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -330,7 +355,6 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-400 mt-0.5">Real-time subsurface temperature gradients across depths</p>
               </div>
 
-              {/* Quick Filters */}
               <div className="flex items-center gap-1 bg-[#12141f] p-1 rounded-lg border border-white/5 text-xs">
                 {(['1D', '1W', '1M', 'ALL'] as const).map(r => (
                   <button
@@ -344,7 +368,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Custom Range Selector Toolbar */}
             <div className="flex flex-wrap items-center gap-3 mb-4 bg-[#12141f]/60 p-2.5 rounded-xl border border-white/5 text-xs">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <Calendar className="w-3.5 h-3.5 text-indigo-400" /> Filter Range:
@@ -370,7 +393,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Area Chart Container */}
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={filteredData}>
@@ -392,203 +414,23 @@ export default function Dashboard() {
                   <XAxis 
                     dataKey="timestamp" 
                     stroke="#475569" 
-                    tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
-                    style={{ fontSize: '11px' }}
+                    tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    fontSize={11}
                   />
-                  <YAxis stroke="#475569" domain={['auto', 'auto']} style={{ fontSize: '11px' }} />
+                  <YAxis stroke="#475569" fontSize={11} domain={['auto', 'auto']} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0d0f17', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                    labelFormatter={(label) => new Date(String(label)).toLocaleString()}
+                    contentStyle={{ backgroundColor: '#12141f', borderColor: '#1e2333', color: '#fff', borderRadius: '8px' }}
+                    labelFormatter={(label) => new Date(label).toLocaleString()}
                   />
-                  <Area type="monotone" name="10cm Depth (Shallow)" dataKey="t10" stroke="#eab308" fillOpacity={1} fill="url(#t10Color)" strokeWidth={2.5} />
-                  <Area type="monotone" name="30cm Depth (Mid)" dataKey="t30" stroke="#06b6d4" fillOpacity={1} fill="url(#t30Color)" strokeWidth={2.5} />
-                  <Area type="monotone" name="50cm Depth (Deep)" dataKey="t50" stroke="#6366f1" fillOpacity={1} fill="url(#t50Color)" strokeWidth={2.5} />
+                  <Area type="monotone" dataKey="t10" name="10cm Depth" stroke="#eab308" fillOpacity={1} fill="url(#t10Color)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="t30" name="30cm Depth" stroke="#06b6d4" fillOpacity={1} fill="url(#t30Color)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="t50" name="50cm Depth" stroke="#6366f1" fillOpacity={1} fill="url(#t50Color)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
-
         </div>
-
-        {/* BOTTOM GRID: Sensor Matrix Table + Battery & Power System */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Widget 3: Connected Systems / Sensor Breakdown Table */}
-          <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-white">Subsurface Sensor Array Status</h2>
-              <span className="text-xs text-slate-400 font-mono">4 Probe Channels</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider">
-                    <th className="pb-3 font-medium">Sensor Probe</th>
-                    <th className="pb-3 font-medium">Depth/Target</th>
-                    <th className="pb-3 font-medium">Latest Value</th>
-                    <th className="pb-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-yellow-500"></span> DS18B20 Probe #1
-                    </td>
-                    <td className="py-3 text-slate-400">10cm Subsurface</td>
-                    <td className="py-3 font-bold text-yellow-400">{latest?.t10?.toFixed(2)}°C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400"></span> DS18B20 Probe #2
-                    </td>
-                    <td className="py-3 text-slate-400">30cm Subsurface</td>
-                    <td className="py-3 font-bold text-cyan-400">{latest?.t30?.toFixed(2)}°C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-400"></span> DS18B20 Probe #3
-                    </td>
-                    <td className="py-3 text-slate-400">50cm Subsurface</td>
-                    <td className="py-3 font-bold text-indigo-400">{latest?.t50?.toFixed(2)}°C</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span> DHT22 Module
-                    </td>
-                    <td className="py-3 text-slate-400">Ambient Temp & RH</td>
-                    <td className="py-3 font-bold text-emerald-400">{latest?.ambient?.toFixed(2)}°C / {latest?.humidity?.toFixed(1)}%</td>
-                    <td className="py-3"><span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px]">Optimal</span></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Widget 4: Battery & Power Management Widget */}
-          <div className="lg:col-span-5 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <BatteryCharging className="w-4 h-4 text-purple-400" /> Power Management
-                </h2>
-                <span className="text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded">18650 Li-Ion</span>
-              </div>
-
-              <div className="flex items-baseline justify-between mt-4">
-                <span className="text-3xl font-extrabold text-white">{currentBattery.toFixed(2)} V</span>
-                <span className="text-sm font-semibold text-purple-400">{batteryPercent}% Capacity</span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden mt-3">
-                <div 
-                  className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full transition-all duration-500" 
-                  style={{ width: `${batteryPercent}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between mt-4">
-              <div className="flex items-center gap-2.5">
-                <Wifi className="w-4 h-4 text-emerald-400" />
-                <div>
-                  <p className="text-xs font-semibold text-white">SIM800L Cellular Telemetry</p>
-                  <p className="text-[10px] text-slate-400">HTTP POST / 15-Min Interval</p>
-                </div>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-slate-500" />
-            </div>
-          </div>
-
-        </div>
-
       </main>
-
-      {/* GENERATE REPORT MODAL */}
-      {isReportOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d0f17] border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-5">
-            
-            <div className="flex justify-between items-center pb-3 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-white text-base">Export Telemetry Report</h3>
-              </div>
-              <button onClick={() => setIsReportOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* From Date Input */}
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">From Date & Time</label>
-              <input 
-                type="datetime-local" 
-                value={reportFrom}
-                onChange={e => setReportFrom(e.target.value)}
-                className="w-full bg-[#12141f] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            {/* To Date Input */}
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">To Date & Time</label>
-              <input 
-                type="datetime-local" 
-                value={reportTo}
-                onChange={e => setReportTo(e.target.value)}
-                className="w-full bg-[#12141f] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            {/* Export Format Selection */}
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2">Select Export Format</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setReportFormat('CSV')}
-                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${reportFormat === 'CSV' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#12141f] border-white/5 text-slate-400 hover:text-white'}`}
-                >
-                  <CheckCircle2 className={`w-4 h-4 ${reportFormat === 'CSV' ? 'text-indigo-400' : 'opacity-0'}`} /> CSV Spreadsheet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportFormat('PDF')}
-                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${reportFormat === 'PDF' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#12141f] border-white/5 text-slate-400 hover:text-white'}`}
-                >
-                  <CheckCircle2 className={`w-4 h-4 ${reportFormat === 'PDF' ? 'text-indigo-400' : 'opacity-0'}`} /> PDF Document
-                </button>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-2">
-              <button 
-                type="button" 
-                onClick={() => setIsReportOpen(false)}
-                className="flex-1 bg-[#12141f] hover:bg-white/5 text-slate-300 text-xs py-2.5 rounded-xl font-medium border border-white/5 transition"
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                onClick={handleGenerateReport}
-                disabled={isExporting}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs py-2.5 rounded-xl font-medium transition shadow-lg flex items-center justify-center gap-2"
-              >
-                {isExporting ? 'Generating...' : 'Download Report'}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
