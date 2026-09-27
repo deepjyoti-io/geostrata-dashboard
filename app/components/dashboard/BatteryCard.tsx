@@ -14,7 +14,6 @@ interface BatteryCardProps {
   solarVoltage?: number;
   batteryPercent: number;
   lastSleepCycle: number;
-  avgSleepCycle: number;
 }
 
 export default function BatteryCard({
@@ -22,7 +21,6 @@ export default function BatteryCard({
   solarVoltage = 0,
   batteryPercent,
   lastSleepCycle,
-  avgSleepCycle,
 }: BatteryCardProps) {
   return (
     <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
@@ -38,7 +36,7 @@ export default function BatteryCard({
           </span>
         </div>
 
-        <div className="grid grid-cols-4 text-center py-2 border-b border-white/5 text-xs gap-1">
+        <div className="grid grid-cols-3 text-center py-2 border-b border-white/5 text-xs gap-1">
           {/* Battery Voltage */}
           <div>
             <span className="text-slate-500 block text-[9px] sm:text-[10px] truncate">
@@ -69,16 +67,6 @@ export default function BatteryCard({
             <span className="font-bold text-white flex items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs">
               <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
               {lastSleepCycle} M
-            </span>
-          </div>
-
-          {/* Avg Cycle */}
-          <div>
-            <span className="text-slate-500 block text-[9px] sm:text-[10px] truncate">
-              AVG CYCLE
-            </span>
-            <span className="font-bold text-[#00e676] text-[11px] sm:text-xs">
-              {avgSleepCycle} M
             </span>
           </div>
         </div>
