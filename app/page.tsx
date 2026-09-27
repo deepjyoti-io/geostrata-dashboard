@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { 
-  LayoutDashboard, Activity, Cpu, Wifi, Settings, Download, 
+  LayoutDashboard, Activity, Wifi, Download, 
   Calendar, Layers, BatteryCharging, ArrowUpRight, ShieldCheck,
   FileText, X, CheckCircle2, RefreshCw
 } from 'lucide-react';
@@ -17,7 +17,19 @@ interface TelemetryRecord {
   ambient: number;
   humidity: number;
   battery: number;
+  csq?: number; // SIM800L Signal Quality (0 - 31)
 }
+
+const getSignalInfo = (csq?: number) => {
+  if (csq === undefined || csq === null || csq === 0 || csq === 99) {
+    return { text: 'No Signal', color: 'text-red-400 bg-red-500/10 border-red-500/20' };
+  }
+  const percent = Math.min(100, Math.round((csq / 31) * 100));
+  if (csq >= 20) return { text: `${percent}% Strong`, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+  if (csq >= 14) return { text: `${percent}% Good`, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+  if (csq >= 8)  return { text: `${percent}% Fair`, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' };
+  return { text: `${percent}% Weak`, color: 'text-red-400 bg-red-500/10 border-red-500/20' };
+};
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -112,10 +124,10 @@ export default function Dashboard() {
     const records = (reportRows || data) as TelemetryRecord[];
 
     if (reportFormat === 'CSV') {
-      const headers = ['Timestamp', '10cm Depth (°C)', '30cm Depth (°C)', '50cm Depth (°C)', 'Ambient (°C)', 'Humidity (%)', 'Battery (V)'];
+      const headers = ['Timestamp', '10cm Depth (°C)', '30cm Depth (°C)', '50cm Depth (°C)', 'Ambient (°C)', 'Humidity (%)', 'Battery (V)', 'Signal CSQ'];
       const rows = records.map(r => [
         `"${new Date(r.timestamp).toLocaleString()}"`,
-        r.t10, r.t30, r.t50, r.ambient, r.humidity, r.battery
+        r.t10, r.t30, r.t50, r.ambient, r.humidity, r.battery, r.csq ?? 0
       ]);
       const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
       const encodedUri = encodeURI(csvContent);
@@ -148,7 +160,7 @@ export default function Dashboard() {
               <table>
                 <thead>
                   <tr>
-                    <th>Timestamp</th><th>10cm Depth (°C)</th><th>30cm Depth (°C)</th><th>50cm Depth (°C)</th><th>Ambient (°C)</th><th>Humidity (%)</th><th>Battery (V)</th>
+                    <th>Timestamp</th><th>10cm (°C)</th><th>30cm (°C)</th><th>50cm (°C)</th><th>Ambient (°C)</th><th>Humidity (%)</th><th>Battery (V)</th><th>CSQ Signal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,6 +169,7 @@ export default function Dashboard() {
                       <td>${new Date(r.timestamp).toLocaleString()}</td>
                       <td>${r.t10?.toFixed(2)}</td><td>${r.t30?.toFixed(2)}</td><td>${r.t50?.toFixed(2)}</td>
                       <td>${r.ambient?.toFixed(2)}</td><td>${r.humidity?.toFixed(1)}</td><td>${r.battery?.toFixed(2)}</td>
+                      <td>${r.csq ?? 0}/31</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -190,7 +203,7 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-[#07080c] text-slate-200 font-sans overflow-hidden">
       
-      {/* LEFT SIDEBAR (Matching reference layout) */}
+      {/* LEFT SIDEBAR */}
       <aside className="w-64 bg-[#0d0f17] border-r border-white/5 flex flex-col justify-between p-4 shrink-0">
         <div>
           {/* App Logo */}
@@ -204,23 +217,27 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Nav Items */}
+          {/* Cleaned Nav Items */}
           <nav className="space-y-1">
             <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#161926] text-white font-medium text-sm border-l-2 border-[#00e676]">
               <LayoutDashboard className="w-4 h-4 text-[#00e676]" /> Dashboard
             </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition text-sm">
-              <Cpu className="w-4 h-4" /> Hardware Nodes
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition text-sm">
-              <Activity className="w-4 h-4" /> Telemetry Logs
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition text-sm">
-              <Wifi className="w-4 h-4" /> SIM800L Network <span className="ml-auto text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Live</span>
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition text-sm">
-              <Settings className="w-4 h-4" /> System Config
-            </a>
+            
+            {/* Dynamic SIM800L Signal Quality Badge */}
+            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 text-sm">
+              <Wifi className={`w-4 h-4 ${latest?.csq && latest.csq >= 8 ? 'text-emerald-400' : 'text-yellow-400'}`} /> 
+              <span>SIM800L Signal</span> 
+              
+              {(() => {
+                const signal = getSignalInfo(latest?.csq);
+                return (
+                  <span className={`ml-auto text-[10px] border px-2 py-0.5 rounded-full font-mono flex items-center gap-1 ${signal.color}`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                    {signal.text}
+                  </span>
+                );
+              })()}
+            </div>
           </nav>
         </div>
 
@@ -267,7 +284,7 @@ export default function Dashboard() {
         {/* TOP GRID: System Health (Gauge) + Main Trend Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Widget 1: Subsurface System Health (Left Card) */}
+          {/* Widget 1: Subsurface System Health */}
           <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
@@ -301,7 +318,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 2: Main Thermal Trend Chart (Right Card matching Reference Graph) */}
+          {/* Widget 2: Main Thermal Trend Chart */}
           <div className="lg:col-span-8 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             
             {/* Chart Header + Date Selector Controls */}
@@ -480,7 +497,7 @@ export default function Dashboard() {
                 <Wifi className="w-4 h-4 text-emerald-400" />
                 <div>
                   <p className="text-xs font-semibold text-white">SIM800L Cellular Telemetry</p>
-                  <p className="text-[10px] text-slate-400">HTTP POST / 60s Transmit Cycle</p>
+                  <p className="text-[10px] text-slate-400">HTTP POST / 15-Min Interval</p>
                 </div>
               </div>
               <ArrowUpRight className="w-4 h-4 text-slate-500" />
