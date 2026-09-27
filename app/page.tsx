@@ -5,7 +5,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { 
   LayoutDashboard, Activity, Wifi, Download, 
   Calendar, Layers, BatteryCharging, ArrowUpRight, ShieldCheck,
-  FileText, X, CheckCircle2, RefreshCw, MapPin, Zap, Thermometer, Droplets, Clock
+  FileText, X, CheckCircle2, RefreshCw, MapPin, Zap, Thermometer, Droplets, Clock, Menu
 } from 'lucide-react';
 
 interface TelemetryRecord {
@@ -39,20 +39,19 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // --- Fixed 180-Degree Semicircle Gauge ---
 const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: number; batteryPercent: number }) => {
-  const totalSpokes = 18; // Match chunky look from reference
+  const totalSpokes = 18;
   const activeSpokes = Math.round((batteryPercent / 100) * totalSpokes);
 
   return (
-    <div className="relative flex flex-col items-center justify-center my-auto w-full max-w-[280px] mx-auto pt-6 pb-2">
+    <div className="relative flex flex-col items-center justify-center my-auto w-full max-w-[240px] sm:max-w-[280px] mx-auto pt-4 sm:pt-6 pb-2">
       <svg className="w-full h-auto overflow-visible" viewBox="0 0 220 120">
         {Array.from({ length: totalSpokes }).map((_, i) => {
-          // Strict 180-degree semicircle sweep from -180 (left) to 0 (right)
           const angle = -180 + (i * 180) / (totalSpokes - 1);
           const radians = (angle * Math.PI) / 180;
           const isActive = i < activeSpokes;
 
           const cx = 110;
-          const cy = 110; // Flat bottom aligns perfectly horizontal here
+          const cy = 110;
           const rInner = 70;
           const rOuter = 105;
 
@@ -77,12 +76,11 @@ const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: num
         })}
       </svg>
 
-      {/* Text perfectly nestled in the empty cavity to prevent overlap */}
       <div className="absolute bottom-2 w-full flex flex-col items-center justify-center">
-        <span className="text-4xl font-black text-white tracking-tight leading-none drop-shadow-md">
+        <span className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none drop-shadow-md">
           {batteryPercent}%
         </span>
-        <span className="text-[11px] text-slate-400 font-mono mt-1.5">
+        <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono mt-1">
           {batteryVolts.toFixed(2)}V Li-Ion Battery
         </span>
       </div>
@@ -108,6 +106,9 @@ export default function Dashboard() {
   const [reportTo, setReportTo] = useState('');
   const [reportFormat, setReportFormat] = useState<'CSV' | 'PDF'>('CSV');
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Mobile drawer state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -269,9 +270,9 @@ export default function Dashboard() {
 
   if (loading && !latest) {
     return (
-      <div className="min-h-screen bg-[#07080c] text-white flex items-center justify-center font-sans">
+      <div className="min-h-screen bg-[#07080c] text-white flex items-center justify-center font-sans p-4">
         <div className="flex items-center gap-3 bg-[#11131c] px-6 py-4 rounded-xl border border-white/10 shadow-2xl">
-          <Activity className="animate-spin text-[#00e676] w-5 h-5" />
+          <Activity className="animate-spin text-[#00e676] w-5 h-5 shrink-0" />
           <span className="text-sm font-medium tracking-wide">Initializing GeoStrata Subsurface Node...</span>
         </div>
       </div>
@@ -284,12 +285,44 @@ export default function Dashboard() {
   const mapLon = latest?.lon && latest.lon !== 0 ? latest.lon : 91.7362;
 
   return (
-    <div className="flex h-screen bg-[#07080c] text-slate-200 font-sans overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-screen md:h-screen bg-[#07080c] text-slate-200 font-sans md:overflow-hidden relative">
       
-      {/* LEFT SIDEBAR */}
-      <aside className="w-64 bg-[#0d0f17] border-r border-white/5 flex flex-col justify-between p-4 shrink-0">
+      {/* MOBILE TOP NAVBAR */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-[#0d0f17] border-b border-white/5 z-20">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-[#00e676]/10 p-1.5 rounded-lg border border-[#00e676]/20">
+            <Layers className="text-[#00e676] w-5 h-5" />
+          </div>
+          <div>
+            <span className="font-bold text-sm text-white tracking-wider block">GeoStrata</span>
+            <span className="text-[9px] text-slate-500 font-mono block">Subsurface Telemetry</span>
+          </div>
+        </div>
+        <button 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+          className="p-2 text-slate-300 hover:text-white bg-[#161926] rounded-lg border border-white/10 focus:outline-none"
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* MOBILE DRAWER BACKDROP */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)} 
+          className="md:hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-30 transition-opacity"
+        />
+      )}
+
+      {/* SIDEBAR (Responsive Mobile Drawer + Desktop Sidebar) */}
+      <aside className={`
+        fixed md:relative top-0 left-0 bottom-0 z-40
+        w-64 bg-[#0d0f17] border-r border-white/5 flex flex-col justify-between p-4
+        transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         <div>
-          <div className="flex items-center gap-3 px-2 py-3 mb-6 border-b border-white/5">
+          <div className="hidden md:flex items-center gap-3 px-2 py-3 mb-6 border-b border-white/5">
             <div className="bg-[#00e676]/10 p-2 rounded-lg border border-[#00e676]/20">
               <Layers className="text-[#00e676] w-5 h-5" />
             </div>
@@ -299,7 +332,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <nav className="space-y-1">
+          <nav className="space-y-1 mt-4 md:mt-0">
             <a href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#161926] text-white font-medium text-sm border-l-2 border-[#00e676]">
               <LayoutDashboard className="w-4 h-4 text-[#00e676]" /> Dashboard
             </a>
@@ -309,7 +342,7 @@ export default function Dashboard() {
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-3">Active Nodes</p>
             <div className="space-y-2">
               <button 
-                onClick={() => setSelectedNode('sim800l')}
+                onClick={() => { setSelectedNode('sim800l'); setIsMobileMenuOpen(false); }}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-[#161926] text-slate-300 hover:text-white font-medium text-sm transition border border-transparent hover:border-white/5"
               >
                 <div className="flex items-center gap-3">
@@ -322,7 +355,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
+        <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between mt-6 md:mt-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center font-bold text-xs text-indigo-300">
               ST01
@@ -339,7 +372,7 @@ export default function Dashboard() {
       {/* NODE MODAL POPUP */}
       {selectedNode === 'sim800l' && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12141f] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+          <div className="bg-[#12141f] border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl relative">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Activity className="w-5 h-5 text-[#00e676]" /> SIM800L Node Details
@@ -352,16 +385,16 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div className="bg-[#07080c] p-4 rounded-xl border border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Wifi className="w-5 h-5 text-indigo-400" />
+                  <Wifi className="w-5 h-5 text-indigo-400 shrink-0" />
                   <div>
                     <p className="text-xs text-slate-500">Network Strength</p>
-                    <p className="text-sm font-medium text-slate-200">GPRS (airtelgprs.com)</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-200">GPRS (airtelgprs.com)</p>
                   </div>
                 </div>
                 {(() => {
                   const signal = getSignalInfo(latest?.csq);
                   return (
-                    <span className={`text-xs border px-3 py-1.5 rounded-lg font-mono flex items-center gap-2 ${signal.color}`}>
+                    <span className={`text-xs border px-2.5 py-1 rounded-lg font-mono flex items-center gap-1.5 ${signal.color}`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
                       {signal.text}
                     </span>
@@ -391,24 +424,24 @@ export default function Dashboard() {
       )}
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+      <main className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
         
         {/* Top Header Bar */}
-        <div className="flex justify-between items-center pb-2 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-white tracking-tight">Dashboard Overview</h1>
-            <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1.5 font-mono">
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">Dashboard Overview</h1>
+            <span className="text-[11px] sm:text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1.5 font-mono">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Station Online
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 self-start sm:self-auto">
             <button onClick={fetchData} className="p-2 rounded-lg bg-[#12141f] border border-white/10 hover:border-white/20 text-slate-300 transition">
               <RefreshCw className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setIsReportOpen(true)}
-              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-medium text-xs px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-lg transition"
+              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-medium text-xs px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-lg flex items-center gap-2 shadow-lg transition"
             >
               <Download className="w-3.5 h-3.5" /> Generate Report
             </button>
@@ -416,31 +449,31 @@ export default function Dashboard() {
         </div>
 
         {/* TOP ROW: Battery Radial Gauge + Main Area Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           
           {/* Widget 1: Power System Health */}
-          <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
+          <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
+                <h2 className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
                   <BatteryCharging className="w-4 h-4 text-[#00e676]" /> Power System Health
                 </h2>
                 <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">18650 CELL</span>
               </div>
 
               {/* Dynamic Sleep Cycle Sub-Header */}
-              <div className="flex justify-around text-center py-2 border-b border-white/5 text-xs">
+              <div className="flex justify-around text-center py-2 border-b border-white/5 text-xs gap-1">
                 <div>
-                  <span className="text-slate-500 block text-[10px]">OUTPUT</span>
-                  <span className="font-bold text-white flex items-center gap-1"><Zap className="w-3 h-3 text-yellow-400"/> {currentBattery.toFixed(2)} V</span>
+                  <span className="text-slate-500 block text-[9px] sm:text-[10px]">OUTPUT</span>
+                  <span className="font-bold text-white flex items-center gap-0.5 sm:gap-1 text-xs"><Zap className="w-3 h-3 text-yellow-400"/> {currentBattery.toFixed(2)} V</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">LAST SLEEP</span>
-                  <span className="font-bold text-white flex items-center gap-1"><Clock className="w-3 h-3 text-cyan-400"/> {lastSleepCycle} Mins</span>
+                  <span className="text-slate-500 block text-[9px] sm:text-[10px]">LAST SLEEP</span>
+                  <span className="font-bold text-white flex items-center gap-0.5 sm:gap-1 text-xs"><Clock className="w-3 h-3 text-cyan-400"/> {lastSleepCycle} M</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">AVG CYCLE</span>
-                  <span className="font-bold text-[#00e676]">{avgSleepCycle} Mins</span>
+                  <span className="text-slate-500 block text-[9px] sm:text-[10px]">AVG CYCLE</span>
+                  <span className="font-bold text-[#00e676] text-xs">{avgSleepCycle} M</span>
                 </div>
               </div>
             </div>
@@ -448,28 +481,28 @@ export default function Dashboard() {
             {/* Perfect 180-Degree Semicircle Gauge */}
             <BatterySpokeGauge batteryVolts={currentBattery} batteryPercent={batteryPercent} />
 
-            <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex justify-between items-center">
-              <span>Power Source: Solar + Li-Ion</span>
-              <span className="text-emerald-400 font-mono">Deep Sleep Mode Active</span>
+            <div className="pt-2 border-t border-white/5 text-[10px] sm:text-[11px] text-slate-400 flex justify-between items-center">
+              <span>Source: Solar + Li-Ion</span>
+              <span className="text-emerald-400 font-mono">Deep Sleep Active</span>
             </div>
           </div>
 
           {/* Widget 2: Thermal Propagation Trend Chart */}
-          <div className="lg:col-span-8 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div className="lg:col-span-8 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
-                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <h2 className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-[#00e676]"></span> Thermal Propagation Trend
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Real-time subsurface temperature gradients across depths</p>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">Real-time subsurface temperature gradients across depths</p>
               </div>
 
-              <div className="flex items-center gap-1 bg-[#12141f] p-1 rounded-lg border border-white/5 text-xs">
+              <div className="flex items-center gap-1 bg-[#12141f] p-1 rounded-lg border border-white/5 text-xs self-start sm:self-auto">
                 {(['1D', '1W', '1M', 'ALL'] as const).map(r => (
                   <button
                     key={r}
                     onClick={() => applyQuickFilter(r)}
-                    className={`px-3 py-1 rounded-md font-medium transition ${chartRange === r ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                    className={`px-2.5 py-1 sm:px-3 rounded-md font-medium transition text-xs ${chartRange === r ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
                   >
                     {r}
                   </button>
@@ -477,32 +510,34 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 mb-4 bg-[#12141f]/60 p-2.5 rounded-xl border border-white/5 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Calendar className="w-3.5 h-3.5 text-indigo-400" /> Filter Range:
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 mb-4 bg-[#12141f]/60 p-2.5 rounded-xl border border-white/5 text-xs">
+              <div className="flex items-center gap-1.5 text-slate-400 shrink-0">
+                <Calendar className="w-3.5 h-3.5 text-indigo-400" /> Custom Range:
               </div>
-              <input 
-                type="datetime-local" 
-                value={startDate} 
-                onChange={e => setStartDate(e.target.value)}
-                className="bg-[#07080c] border border-white/10 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
-              />
-              <span className="text-slate-600">to</span>
-              <input 
-                type="datetime-local" 
-                value={endDate} 
-                onChange={e => setEndDate(e.target.value)}
-                className="bg-[#07080c] border border-white/10 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500"
-              />
-              <button 
-                onClick={applyCustomFilter} 
-                className="bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 px-3 py-1 rounded hover:bg-indigo-600 hover:text-white transition"
-              >
-                Apply
-              </button>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <input 
+                  type="datetime-local" 
+                  value={startDate} 
+                  onChange={e => setStartDate(e.target.value)}
+                  className="bg-[#07080c] border border-white/10 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 w-full sm:w-auto"
+                />
+                <span className="text-slate-600 hidden sm:inline">to</span>
+                <input 
+                  type="datetime-local" 
+                  value={endDate} 
+                  onChange={e => setEndDate(e.target.value)}
+                  className="bg-[#07080c] border border-white/10 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 w-full sm:w-auto"
+                />
+                <button 
+                  onClick={applyCustomFilter} 
+                  className="bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 px-3 py-1 rounded hover:bg-indigo-600 hover:text-white transition w-full sm:w-auto mt-1 sm:mt-0"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
 
-            <div className="h-64 w-full">
+            <div className="h-56 sm:h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={filteredData}>
                   <defs>
@@ -524,11 +559,11 @@ export default function Dashboard() {
                     dataKey="timestamp" 
                     stroke="#475569" 
                     tickFormatter={(tick) => tick ? new Date(String(tick)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                    fontSize={11}
+                    fontSize={10}
                   />
-                  <YAxis stroke="#475569" fontSize={11} domain={['auto', 'auto']} />
+                  <YAxis stroke="#475569" fontSize={10} domain={['auto', 'auto']} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#12141f', borderColor: '#1e2333', color: '#fff', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#12141f', borderColor: '#1e2333', color: '#fff', borderRadius: '8px', fontSize: '12px' }}
                     labelFormatter={(label) => label ? new Date(String(label)).toLocaleString() : ''}
                   />
                   <Area type="monotone" dataKey="t10" name="10cm Depth" stroke="#eab308" fillOpacity={1} fill="url(#t10Color)" strokeWidth={2} />
@@ -541,58 +576,60 @@ export default function Dashboard() {
         </div>
 
         {/* BOTTOM ROW: Split Sensor Matrix + Tactical Red Spot Map */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           
           {/* Widget 3: Sensor Matrix Breakdown */}
-          <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
+          <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
                 <Thermometer className="w-4 h-4 text-cyan-400" /> Sensor Matrix Breakdown
               </h2>
-              <span className="text-xs text-slate-400 font-mono">DS18B20 + Ambient</span>
+              <span className="text-[10px] sm:text-xs text-slate-400 font-mono">DS18B20 + Ambient</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 my-auto">
-              {/* Left Side: DS18B20 Subsurface Probes Only */}
-              <div className="md:col-span-7 border-r border-white/5 pr-4">
-                <p className="text-[11px] text-slate-500 uppercase font-mono mb-2">DS18B20 SUBSURFACE PROBES</p>
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider">
-                      <th className="pb-2 font-medium">SENSOR MODULE</th>
-                      <th className="pb-2 font-medium">DEPTH LEVEL</th>
-                      <th className="pb-2 font-medium">LIVE READING</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    <tr>
-                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-amber-400"></span> DS18B20 #1
-                      </td>
-                      <td className="py-2.5 text-slate-400">10cm Subsurface</td>
-                      <td className="py-2.5 font-bold text-amber-400">{latest?.t10?.toFixed(2) || '--'} °C</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-cyan-400"></span> DS18B20 #2
-                      </td>
-                      <td className="py-2.5 text-slate-400">30cm Subsurface</td>
-                      <td className="py-2.5 font-bold text-cyan-400">{latest?.t30?.toFixed(2) || '--'} °C</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 font-medium text-white flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-indigo-400"></span> DS18B20 #3
-                      </td>
-                      <td className="py-2.5 text-slate-400">50cm Subsurface</td>
-                      <td className="py-2.5 font-bold text-indigo-400">{latest?.t50?.toFixed(2) || '--'} °C</td>
-                    </tr>
-                  </tbody>
-                </table>
+              {/* DS18B20 Subsurface Probes */}
+              <div className="md:col-span-7 border-b md:border-b-0 md:border-r border-white/5 pb-4 md:pb-0 pr-0 md:pr-4">
+                <p className="text-[10px] sm:text-[11px] text-slate-500 uppercase font-mono mb-2">DS18B20 SUBSURFACE PROBES</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider text-[10px]">
+                        <th className="pb-2 font-medium">SENSOR</th>
+                        <th className="pb-2 font-medium">DEPTH</th>
+                        <th className="pb-2 font-medium">READING</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      <tr>
+                        <td className="py-2.5 font-medium text-white flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-400"></span> #1
+                        </td>
+                        <td className="py-2.5 text-slate-400">10cm Depth</td>
+                        <td className="py-2.5 font-bold text-amber-400">{latest?.t10?.toFixed(2) || '--'} °C</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 font-medium text-white flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-cyan-400"></span> #2
+                        </td>
+                        <td className="py-2.5 text-slate-400">30cm Depth</td>
+                        <td className="py-2.5 font-bold text-cyan-400">{latest?.t30?.toFixed(2) || '--'} °C</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 font-medium text-white flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-400"></span> #3
+                        </td>
+                        <td className="py-2.5 text-slate-400">50cm Depth</td>
+                        <td className="py-2.5 font-bold text-indigo-400">{latest?.t50?.toFixed(2) || '--'} °C</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {/* Right Side: Ambient Temperature & Humidity */}
-              <div className="md:col-span-5 flex flex-col justify-center space-y-3 pl-2">
-                <p className="text-[11px] text-slate-500 uppercase font-mono">AMBIENT CLIMATE (DHT22)</p>
+              {/* Ambient Temperature & Humidity */}
+              <div className="md:col-span-5 flex flex-col justify-center space-y-3 pl-0 md:pl-2">
+                <p className="text-[10px] sm:text-[11px] text-slate-500 uppercase font-mono">AMBIENT CLIMATE (DHT22)</p>
                 
                 <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -601,7 +638,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block">Ambient Temp</span>
-                      <span className="text-sm font-bold text-white">{latest?.ambient?.toFixed(2) || '--'} °C</span>
+                      <span className="text-xs sm:text-sm font-bold text-white">{latest?.ambient?.toFixed(2) || '--'} °C</span>
                     </div>
                   </div>
                 </div>
@@ -613,7 +650,7 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 block">Relative Humidity</span>
-                      <span className="text-sm font-bold text-white">{latest?.humidity?.toFixed(1) || '--'} %</span>
+                      <span className="text-xs sm:text-sm font-bold text-white">{latest?.humidity?.toFixed(1) || '--'} %</span>
                     </div>
                   </div>
                 </div>
@@ -622,18 +659,18 @@ export default function Dashboard() {
           </div>
 
           {/* Widget 4: Dynamic Tactical Red Spot Location Map */}
-          <div className="lg:col-span-5 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:col-span-5 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-rose-400" /> Node Geo-Location
               </h2>
-              <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-mono">
+              <span className="text-[9px] sm:text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-mono">
                 SIM800L Cell LBS
               </span>
             </div>
 
             {/* Tactical Dark Map Container */}
-            <div className="w-full h-48 rounded-xl overflow-hidden border border-white/10 relative bg-[#07080c]">
+            <div className="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-white/10 relative bg-[#07080c]">
               <iframe
                 title="Node Location Map"
                 width="100%"
@@ -646,106 +683,83 @@ export default function Dashboard() {
 
               {/* Centered Red Spot Target Overlay */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full border border-rose-500/30 bg-rose-500/10 animate-ping absolute"></div>
-                <div className="w-12 h-12 rounded-full border border-rose-500/50 bg-rose-500/20 absolute"></div>
-                <div className="w-6 h-6 rounded-full bg-rose-600 border-2 border-white shadow-[0_0_15px_rgba(244,63,94,0.9)] flex items-center justify-center z-10">
-                  <div className="w-2 h-2 rounded-full bg-white"></div>
-                </div>
-
-                {/* Tactical Location Label */}
-                <div className="absolute bottom-3 left-3 bg-[#0d0f17]/95 backdrop-blur-md px-3 py-2 rounded-xl border border-rose-500/30 shadow-2xl flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
-                  <div>
-                    <p className="text-[11px] font-bold text-white">SIM800L Node Location</p>
-                    <p className="text-[10px] text-rose-400 font-mono">Lat: {mapLat.toFixed(4)}°, Lon: {mapLon.toFixed(4)}°</p>
-                  </div>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-rose-500/30 bg-rose-500/10 animate-ping absolute"></div>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-rose-500/50 bg-rose-500/20 absolute"></div>
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-rose-600 border-2 border-white shadow-[0_0_15px_rgba(244,63,94,0.9)] flex items-center justify-center z-10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-              <span>Triangulated via GSM Towers</span>
-              <span className="text-indigo-400 font-mono">airtelgprs.com</span>
             </div>
           </div>
 
         </div>
-
       </main>
 
-      {/* GENERATE REPORT MODAL */}
+      {/* REPORT MODAL */}
       {isReportOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0d0f17] border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-2xl relative space-y-5">
-            
-            <div className="flex justify-between items-center pb-3 border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-indigo-400" />
-                <h3 className="font-bold text-white text-base">Export Telemetry Report</h3>
-              </div>
-              <button onClick={() => setIsReportOpen(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#12141f] border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl relative">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-400" /> Export Telemetry Report
+              </h3>
+              <button onClick={() => setIsReportOpen(false)} className="text-slate-400 hover:text-white transition">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">From Date & Time</label>
-              <input 
-                type="datetime-local" 
-                value={reportFrom}
-                onChange={e => setReportFrom(e.target.value)}
-                className="w-full bg-[#12141f] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-400 block mb-1">From Date</label>
+                <input 
+                  type="datetime-local" 
+                  value={reportFrom} 
+                  onChange={e => setReportFrom(e.target.value)}
+                  className="w-full bg-[#07080c] border border-white/10 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">To Date & Time</label>
-              <input 
-                type="datetime-local" 
-                value={reportTo}
-                onChange={e => setReportTo(e.target.value)}
-                className="w-full bg-[#12141f] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+              <div>
+                <label className="text-slate-400 block mb-1">To Date</label>
+                <input 
+                  type="datetime-local" 
+                  value={reportTo} 
+                  onChange={e => setReportTo(e.target.value)}
+                  className="w-full bg-[#07080c] border border-white/10 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2">Select Export Format</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setReportFormat('CSV')}
-                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${reportFormat === 'CSV' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#12141f] border-white/5 text-slate-400 hover:text-white'}`}
+              <div>
+                <label className="text-slate-400 block mb-1">Format</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setReportFormat('CSV')}
+                    className={`p-2.5 rounded-lg border font-medium flex items-center justify-center gap-2 transition ${reportFormat === 'CSV' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#07080c] border-white/5 text-slate-400'}`}
+                  >
+                    CSV File
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setReportFormat('PDF')}
+                    className={`p-2.5 rounded-lg border font-medium flex items-center justify-center gap-2 transition ${reportFormat === 'PDF' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#07080c] border-white/5 text-slate-400'}`}
+                  >
+                    PDF Printable
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  onClick={handleGenerateReport}
+                  disabled={isExporting}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium p-3 rounded-lg flex items-center justify-center gap-2 shadow-lg transition"
                 >
-                  <CheckCircle2 className={`w-4 h-4 ${reportFormat === 'CSV' ? 'text-indigo-400' : 'opacity-0'}`} /> CSV Spreadsheet
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReportFormat('PDF')}
-                  className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition ${reportFormat === 'PDF' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300' : 'bg-[#12141f] border-white/5 text-slate-400 hover:text-white'}`}
-                >
-                  <CheckCircle2 className={`w-4 h-4 ${reportFormat === 'PDF' ? 'text-indigo-400' : 'opacity-0'}`} /> PDF Document
+                  {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Download Data Report
                 </button>
               </div>
             </div>
-
-            <div className="flex gap-3 pt-2">
-              <button 
-                type="button" 
-                onClick={() => setIsReportOpen(false)}
-                className="flex-1 bg-[#12141f] hover:bg-white/5 text-slate-300 text-xs py-2.5 rounded-xl font-medium border border-white/5 transition"
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                onClick={handleGenerateReport}
-                disabled={isExporting}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs py-2.5 rounded-xl font-medium transition shadow-lg flex items-center justify-center gap-2"
-              >
-                {isExporting ? 'Generating...' : 'Download Report'}
-              </button>
-            </div>
-
           </div>
         </div>
       )}
