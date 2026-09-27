@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Thermometer, Battery, Activity } from 'lucide-react';
 
-// Define Telemetry Data Interface for TypeScript
 interface TelemetryRecord {
   id?: number;
   timestamp: string;
@@ -36,12 +35,11 @@ export default function Dashboard() {
       if (telemetry && telemetry.length > 0) {
         const records = telemetry as TelemetryRecord[];
         setLatest(records[0]);
-        setData([...records].reverse()); // Reverse for chronological chart plotting
+        setData([...records].reverse());
       }
     }
     fetchData();
     
-    // Refresh data every 5 minutes
     const interval = setInterval(fetchData, 300000);
     return () => clearInterval(interval);
   }, []);
@@ -72,7 +70,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top Cards Grid */}
+      {/* Sensor Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         
         {/* 10cm Card */}
@@ -105,7 +103,7 @@ export default function Dashboard() {
           <Activity className="absolute bottom-6 right-6 text-gray-700 opacity-50 w-8 h-8" />
         </div>
 
-        {/* Ambient & Battery Grouped */}
+        {/* Ambient & Battery */}
         <div className="flex flex-col gap-4">
           <div className="bg-[#1a1d2d] rounded-xl p-4 border-l-4 border-emerald-500 flex-1 flex flex-col justify-center">
             <h2 className="text-gray-400 text-xs font-semibold tracking-wider mb-1">AMBIENT (DHT22)</h2>
@@ -130,7 +128,7 @@ export default function Dashboard() {
 
       </div>
 
-      {/* Main Chart Section */}
+      {/* Chart */}
       <div className="bg-[#1a1d2d] rounded-xl p-6 shadow-lg">
         <div className="flex justify-between items-center mb-6">
           <div>
