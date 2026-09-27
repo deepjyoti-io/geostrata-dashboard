@@ -4,14 +4,26 @@ import { createClient } from '@supabase/supabase-js';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Thermometer, Battery, Activity } from 'lucide-react';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+// Define Telemetry Data Interface for TypeScript
+interface TelemetryRecord {
+  id?: number;
+  timestamp: string;
+  t10: number;
+  t30: number;
+  t50: number;
+  ambient: number;
+  humidity: number;
+  battery: number;
+}
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function Dashboard() {
-  const [data, setData] = useState([]);
-  const [latest, setLatest] = useState(null);
+  const [data, setData] = useState<TelemetryRecord[]>([]);
+  const [latest, setLatest] = useState<TelemetryRecord | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -22,8 +34,9 @@ export default function Dashboard() {
         .limit(20);
       
       if (telemetry && telemetry.length > 0) {
-        setLatest(telemetry[0]);
-        setData(telemetry.reverse()); // Reverse for chronological chart plotting
+        const records = telemetry as TelemetryRecord[];
+        setLatest(records[0]);
+        setData([...records].reverse()); // Reverse for chronological chart plotting
       }
     }
     fetchData();
@@ -33,7 +46,14 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!latest) return <div className="min-h-screen bg-[#0f111a] text-white flex items-center justify-center">Loading Telemetry...</div>;
+  if (!latest) return (
+    <div className="min-h-screen bg-[#0f111a] text-white flex items-center justify-center font-sans">
+      <div className="flex items-center gap-3 bg-[#1a1d2d] p-6 rounded-xl border border-gray-800">
+        <Activity className="animate-spin text-emerald-500" />
+        <span>Loading Subsurface Telemetry...</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0f111a] p-8 text-white font-sans">
@@ -103,7 +123,7 @@ export default function Dashboard() {
                <div className="text-gray-400 text-xs">{Math.round((latest.battery / 4.2) * 100)}%</div>
             </div>
             <div className="w-full bg-gray-800 rounded-full h-1.5">
-              <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${(latest.battery / 4.2) * 100}%` }}></div>
+              <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, (latest.battery / 4.2) * 100))}%` }}></div>
             </div>
           </div>
         </div>
@@ -126,7 +146,7 @@ export default function Dashboard() {
               <YAxis stroke="#6b7280" domain={['auto', 'auto']} />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#0f111a', border: '1px solid #2d3142', borderRadius: '8px' }}
-                labelFormatter={(label) => new Date(label).toLocaleString()}
+                labelFormatter={(label) => new Date(String(label)).toLocaleString()}
               />
               <Line type="monotone" name="10cm Depth (Shallow)" dataKey="t10" stroke="#eab308" strokeWidth={3} dot={{ r: 4, fill: "#eab308" }} activeDot={{ r: 6 }} />
               <Line type="monotone" name="30cm Depth (Mid)" dataKey="t30" stroke="#22d3ee" strokeWidth={3} dot={{ r: 4, fill: "#22d3ee" }} activeDot={{ r: 6 }} />
