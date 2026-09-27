@@ -37,23 +37,24 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// --- Properly Aligned Spoke Semicircle Battery Gauge ---
+// --- Flawless Symmetrical Radial Arc Gauge Component ---
 const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: number; batteryPercent: number }) => {
-  const totalSpokes = 26;
+  const totalSpokes = 28;
   const activeSpokes = Math.round((batteryPercent / 100) * totalSpokes);
 
   return (
     <div className="relative flex flex-col items-center justify-center my-auto py-2">
-      <svg className="w-56 h-32" viewBox="0 0 200 115">
+      <svg className="w-60 h-36 overflow-visible" viewBox="0 0 200 145">
         {Array.from({ length: totalSpokes }).map((_, i) => {
-          const angle = -145 + (i * 290) / (totalSpokes - 1);
+          // Perfectly symmetric 220-degree sweep from -200 deg (left) to +20 deg (right) centered at -90 deg (top)
+          const angle = -200 + (i * 220) / (totalSpokes - 1);
           const radians = (angle * Math.PI) / 180;
           const isActive = i < activeSpokes;
 
           const cx = 100;
-          const cy = 95;
-          const rInner = 68;
-          const rOuter = 86;
+          const cy = 100;
+          const rInner = 62;
+          const rOuter = 82;
 
           const x1 = cx + rInner * Math.cos(radians);
           const y1 = cy + rInner * Math.sin(radians);
@@ -75,8 +76,8 @@ const BatterySpokeGauge = ({ batteryVolts, batteryPercent }: { batteryVolts: num
         })}
       </svg>
 
-      {/* Centered Value Overlay */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
+      {/* Centered Overlay Text */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pt-3">
         <span className="text-3xl font-black text-white tracking-tight">{batteryPercent}%</span>
         <span className="text-[11px] text-slate-400 font-mono mt-0.5">{batteryVolts.toFixed(2)}V Li-Ion Battery</span>
       </div>
@@ -118,9 +119,7 @@ export default function Dashboard() {
       const chronological = [...records].reverse();
       setData(chronological);
       
-      // Calculate dynamic sleep cycle and average
       calculateSleepCycles(chronological);
-
       applyQuickFilter('1D', chronological);
     }
     setLoading(false);
@@ -415,7 +414,7 @@ export default function Dashboard() {
         {/* TOP ROW: Battery Radial Gauge + Main Area Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Widget 1: Power System Health (Aligned & Dynamic Sleep Cycle Calculation) */}
+          {/* Widget 1: Power System Health */}
           <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -442,7 +441,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Properly Centered Semicircle Gauge */}
+            {/* Symmetrical Semicircle Gauge */}
             <BatterySpokeGauge batteryVolts={currentBattery} batteryPercent={batteryPercent} />
 
             <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex justify-between items-center">
@@ -537,10 +536,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* BOTTOM ROW: Split Sensor Matrix (DS18B20 Table + Ambient Side Card) + Tactical Red Spot Map */}
+        {/* BOTTOM ROW: Split Sensor Matrix + Tactical Red Spot Map */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Widget 3: Sensor Matrix Breakdown (DS18B20 Probes on Left + Ambient DHT22 on Right) */}
+          {/* Widget 3: Sensor Matrix Breakdown */}
           <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -552,13 +551,13 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 my-auto">
               {/* Left Side: DS18B20 Subsurface Probes Only */}
               <div className="md:col-span-7 border-r border-white/5 pr-4">
-                <p className="text-[11px] text-slate-500 uppercase font-mono mb-2">DS18B20 Subsurface Probes</p>
+                <p className="text-[11px] text-slate-500 uppercase font-mono mb-2">DS18B20 SUBSURFACE PROBES</p>
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider">
-                      <th className="pb-2 font-medium">Sensor Module</th>
-                      <th className="pb-2 font-medium">Depth Level</th>
-                      <th className="pb-2 font-medium">Live Reading</th>
+                      <th className="pb-2 font-medium">SENSOR MODULE</th>
+                      <th className="pb-2 font-medium">DEPTH LEVEL</th>
+                      <th className="pb-2 font-medium">LIVE READING</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -589,7 +588,7 @@ export default function Dashboard() {
 
               {/* Right Side: Ambient Temperature & Humidity */}
               <div className="md:col-span-5 flex flex-col justify-center space-y-3 pl-2">
-                <p className="text-[11px] text-slate-500 uppercase font-mono">Ambient Climate (DHT22)</p>
+                <p className="text-[11px] text-slate-500 uppercase font-mono">AMBIENT CLIMATE (DHT22)</p>
                 
                 <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -618,7 +617,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Widget 4: Dynamic Tactical Red Spot Location Map (Matching Reference Image) */}
+          {/* Widget 4: Dynamic Tactical Red Spot Location Map */}
           <div className="lg:col-span-5 bg-[#0d0f17] border border-white/5 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -629,7 +628,7 @@ export default function Dashboard() {
               </span>
             </div>
 
-            {/* Tactical Dark Map Container with Red Pulsing Spot Marker */}
+            {/* Tactical Dark Map Container */}
             <div className="w-full h-48 rounded-xl overflow-hidden border border-white/10 relative bg-[#07080c]">
               <iframe
                 title="Node Location Map"
