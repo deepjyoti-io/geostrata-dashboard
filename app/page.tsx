@@ -414,13 +414,13 @@ export default function Dashboard() {
                   <XAxis 
                     dataKey="timestamp" 
                     stroke="#475569" 
-                    tickFormatter={(tick) => new Date(tick).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    tickFormatter={(tick) => tick ? new Date(String(tick)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     fontSize={11}
                   />
                   <YAxis stroke="#475569" fontSize={11} domain={['auto', 'auto']} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#12141f', borderColor: '#1e2333', color: '#fff', borderRadius: '8px' }}
-                    labelFormatter={(label) => new Date(label).toLocaleString()}
+                    labelFormatter={(label) => label ? new Date(String(label)).toLocaleString() : ''}
                   />
                   <Area type="monotone" dataKey="t10" name="10cm Depth" stroke="#eab308" fillOpacity={1} fill="url(#t10Color)" strokeWidth={2} />
                   <Area type="monotone" dataKey="t30" name="30cm Depth" stroke="#06b6d4" fillOpacity={1} fill="url(#t30Color)" strokeWidth={2} />
@@ -433,4 +433,4 @@ export default function Dashboard() {
       </main>
     </div>
   );
-}
+}   
