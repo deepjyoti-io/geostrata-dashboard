@@ -7,6 +7,7 @@ export interface TelemetryRecord {
   ambient: number;
   humidity: number;
   battery: number;
+  v_solar?: number; // <-- New field added
   csq?: number;
   lat?: number;
   lon?: number;

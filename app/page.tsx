@@ -995,6 +995,9 @@ export default function Dashboard() {
             currentBattery={
               currentBattery
             }
+            solarVoltage={
+              latest?.v_solar || 0
+            }
             batteryPercent={
               batteryPercent
             }
