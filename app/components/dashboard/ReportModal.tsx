@@ -4,8 +4,26 @@ import {
   Download,
   FileText,
   RefreshCw,
-  X,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 
 import type {
   ReportFormat,
@@ -55,141 +73,92 @@ export default function ReportModal({
   isExporting,
   handleGenerateReport,
 }: ReportModalProps) {
-
-  if (!isReportOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-
-      <div className="bg-[#12141f] border border-white/10 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl relative">
-
-        <div className="flex justify-between items-center mb-5">
-
-          <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-
-            <FileText className="w-5 h-5 text-indigo-400" />
-
+    <Dialog
+      open={isReportOpen}
+      onOpenChange={setIsReportOpen}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="size-4" />
             Export Telemetry Report
+          </DialogTitle>
 
-          </h3>
+          <DialogDescription>
+            Choose a date range and format for the export.
+          </DialogDescription>
+        </DialogHeader>
 
-          <button
-            onClick={() =>
-              setIsReportOpen(false)
-            }
-            className="text-slate-400 hover:text-white transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="report-from">From Date</Label>
 
-        </div>
-
-        <div className="space-y-4 text-xs">
-
-          <div>
-
-            <label className="text-slate-400 block mb-1">
-              From Date
-            </label>
-
-            <input
+            <Input
+              id="report-from"
               type="datetime-local"
               value={reportFrom}
               onChange={(e) =>
-                setReportFrom(
-                  e.target.value
-                )
+                setReportFrom(e.target.value)
               }
-              className="w-full bg-[#07080c] border border-white/10 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
-
           </div>
 
-          <div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="report-to">To Date</Label>
 
-            <label className="text-slate-400 block mb-1">
-              To Date
-            </label>
-
-            <input
+            <Input
+              id="report-to"
               type="datetime-local"
               value={reportTo}
               onChange={(e) =>
-                setReportTo(
-                  e.target.value
-                )
+                setReportTo(e.target.value)
               }
-              className="w-full bg-[#07080c] border border-white/10 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-indigo-500"
             />
-
           </div>
 
-          <div>
+          <div className="flex flex-col gap-2">
+            <Label>Format</Label>
 
-            <label className="text-slate-400 block mb-1">
-              Format
-            </label>
-
-            <div className="grid grid-cols-2 gap-2">
-
-              <button
-                type="button"
-                onClick={() =>
-                  setReportFormat("CSV")
+            <ToggleGroup
+              variant="outline"
+              className="w-full"
+              value={[reportFormat]}
+              onValueChange={(value) => {
+                if (value.length > 0) {
+                  setReportFormat(value[0] as ReportFormat);
                 }
-                className={`p-2.5 rounded-lg border font-medium flex items-center justify-center gap-2 transition ${
-                  reportFormat === "CSV"
-                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                    : "bg-[#07080c] border-white/5 text-slate-400"
-                }`}
-              >
-                CSV File
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setReportFormat("PDF")
-                }
-                className={`p-2.5 rounded-lg border font-medium flex items-center justify-center gap-2 transition ${
-                  reportFormat === "PDF"
-                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                    : "bg-[#07080c] border-white/5 text-slate-400"
-                }`}
-              >
-                PDF Printable
-              </button>
-
-            </div>
-
-          </div>
-
-          <div className="pt-2">
-
-            <button
-              onClick={handleGenerateReport}
-              disabled={isExporting}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium p-3 rounded-lg flex items-center justify-center gap-2 shadow-lg transition"
+              }}
             >
+              <ToggleGroupItem value="CSV" className="flex-1">
+                CSV File
+              </ToggleGroupItem>
 
-              {isExporting ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-
-              Download Data Report
-
-            </button>
-
+              <ToggleGroupItem value="PDF" className="flex-1">
+                PDF Printable
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
-
         </div>
 
-      </div>
+        <DialogFooter>
+          <Button
+            onClick={handleGenerateReport}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <RefreshCw
+                data-icon="inline-start"
+                className="animate-spin"
+              />
+            ) : (
+              <Download data-icon="inline-start" />
+            )}
 
-    </div>
+            Download Data Report
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

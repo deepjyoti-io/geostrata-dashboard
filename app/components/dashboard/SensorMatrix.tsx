@@ -5,6 +5,25 @@ import {
   Thermometer,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
 import type {
   TelemetryRecord,
 } from "./types";
@@ -16,190 +35,94 @@ interface SensorMatrixProps {
 export default function SensorMatrix({
   latest,
 }: SensorMatrixProps) {
+  const probes = [
+    { id: "#1", depth: "10cm Depth", value: latest?.t10 },
+    { id: "#2", depth: "30cm Depth", value: latest?.t30 },
+    { id: "#3", depth: "50cm Depth", value: latest?.t50 },
+  ];
 
   return (
-    <div className="lg:col-span-7 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
-
-      <div className="flex justify-between items-center mb-4">
-
-        <h2 className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
-
-          <Thermometer className="w-4 h-4 text-cyan-400" />
-
+    <Card className="lg:col-span-7">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Thermometer />
           Sensor Matrix Breakdown
+        </CardTitle>
 
-        </h2>
+        <CardDescription>
+          <Badge variant="outline">DS18B20 + Ambient</Badge>
+        </CardDescription>
+      </CardHeader>
 
-        <span className="text-[10px] sm:text-xs text-slate-400 font-mono">
-          DS18B20 + Ambient
-        </span>
-
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 my-auto">
-
-        <div className="md:col-span-7 border-b md:border-b-0 md:border-r border-white/5 pb-4 md:pb-0 pr-0 md:pr-4">
-
-          <p className="text-[10px] sm:text-[11px] text-slate-500 uppercase font-mono mb-2">
-            DS18B20 SUBSURFACE PROBES
+      <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <div className="md:col-span-7">
+          <p className="text-muted-foreground mb-2 text-xs uppercase">
+            DS18B20 Subsurface Probes
           </p>
 
-          <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>SENSOR</TableHead>
+                <TableHead>DEPTH</TableHead>
+                <TableHead>READING</TableHead>
+              </TableRow>
+            </TableHeader>
 
-            <table className="w-full text-left text-xs">
+            <TableBody>
+              {probes.map((probe) => (
+                <TableRow key={probe.id}>
+                  <TableCell className="font-medium">
+                    {probe.id}
+                  </TableCell>
 
-              <thead>
+                  <TableCell className="text-muted-foreground">
+                    {probe.depth}
+                  </TableCell>
 
-                <tr className="border-b border-white/5 text-slate-500 uppercase tracking-wider text-[10px]">
-
-                  <th className="pb-2 font-medium">
-                    SENSOR
-                  </th>
-
-                  <th className="pb-2 font-medium">
-                    DEPTH
-                  </th>
-
-                  <th className="pb-2 font-medium">
-                    READING
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody className="divide-y divide-white/5">
-
-                <tr>
-
-                  <td className="py-2.5 font-medium text-white flex items-center gap-1.5">
-
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
-
-                    #1
-
-                  </td>
-
-                  <td className="py-2.5 text-slate-400">
-                    10cm Depth
-                  </td>
-
-                  <td className="py-2.5 font-bold text-amber-400">
-                    {latest?.t10?.toFixed(2) || "--"} °C
-                  </td>
-
-                </tr>
-
-                <tr>
-
-                  <td className="py-2.5 font-medium text-white flex items-center gap-1.5">
-
-                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
-
-                    #2
-
-                  </td>
-
-                  <td className="py-2.5 text-slate-400">
-                    30cm Depth
-                  </td>
-
-                  <td className="py-2.5 font-bold text-cyan-400">
-                    {latest?.t30?.toFixed(2) || "--"} °C
-                  </td>
-
-                </tr>
-
-                <tr>
-
-                  <td className="py-2.5 font-medium text-white flex items-center gap-1.5">
-
-                    <span className="w-2 h-2 rounded-full bg-indigo-400" />
-
-                    #3
-
-                  </td>
-
-                  <td className="py-2.5 text-slate-400">
-                    50cm Depth
-                  </td>
-
-                  <td className="py-2.5 font-bold text-indigo-400">
-                    {latest?.t50?.toFixed(2) || "--"} °C
-                  </td>
-
-                </tr>
-
-              </tbody>
-
-            </table>
-
-          </div>
-
+                  <TableCell className="font-medium">
+                    {probe.value?.toFixed(2) || "--"} °C
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
 
-        <div className="md:col-span-5 flex flex-col justify-center space-y-3 pl-0 md:pl-2">
-
-          <p className="text-[10px] sm:text-[11px] text-slate-500 uppercase font-mono">
-            AMBIENT CLIMATE (DHT22)
+        <div className="flex flex-col gap-3 md:col-span-5">
+          <p className="text-muted-foreground text-xs uppercase">
+            Ambient Climate (DHT22)
           </p>
 
-          <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <Thermometer className="size-4" />
 
-            <div className="flex items-center gap-2.5">
+            <div>
+              <span className="text-muted-foreground block text-xs">
+                Ambient Temp
+              </span>
 
-              <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-
-                <Thermometer className="w-4 h-4" />
-
-              </div>
-
-              <div>
-
-                <span className="text-[10px] text-slate-400 block">
-                  Ambient Temp
-                </span>
-
-                <span className="text-xs sm:text-sm font-bold text-white">
-                  {latest?.ambient?.toFixed(2) || "--"} °C
-                </span>
-
-              </div>
-
+              <span className="text-sm font-medium">
+                {latest?.ambient?.toFixed(2) || "--"} °C
+              </span>
             </div>
-
           </div>
 
-          <div className="bg-[#12141f] p-3 rounded-xl border border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <Droplets className="size-4" />
 
-            <div className="flex items-center gap-2.5">
+            <div>
+              <span className="text-muted-foreground block text-xs">
+                Relative Humidity
+              </span>
 
-              <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
-
-                <Droplets className="w-4 h-4" />
-
-              </div>
-
-              <div>
-
-                <span className="text-[10px] text-slate-400 block">
-                  Relative Humidity
-                </span>
-
-                <span className="text-xs sm:text-sm font-bold text-white">
-                  {latest?.humidity?.toFixed(1) || "--"} %
-                </span>
-
-              </div>
-
+              <span className="text-sm font-medium">
+                {latest?.humidity?.toFixed(1) || "--"} %
+              </span>
             </div>
-
           </div>
-
         </div>
-
-      </div>
-
-    </div>
+      </CardContent>
+    </Card>
   );
 }

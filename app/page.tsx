@@ -13,6 +13,11 @@ import {
   createClient,
 } from "@supabase/supabase-js";
 
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+
 import MobileNavbar from "./components/dashboard/MobileNavbar";
 import Sidebar from "./components/dashboard/Sidebar";
 import NodeModal from "./components/dashboard/NodeModal";
@@ -373,13 +378,15 @@ export default function Dashboard() {
   // =====================================================
   if (loading && !latest) {
     return (
-      <div className="min-h-screen bg-[#07080c] text-white flex items-center justify-center font-sans p-4">
-        <div className="flex items-center gap-3 bg-[#11131c] px-6 py-4 rounded-xl border border-white/10 shadow-2xl">
-          <Activity className="animate-spin text-[#00e676] w-5 h-5 shrink-0" />
-          <span className="text-sm font-medium tracking-wide">
-            Initializing GeoStrata Subsurface Node...
-          </span>
-        </div>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card>
+          <CardContent className="flex items-center gap-3">
+            <Activity className="size-5 shrink-0 animate-spin" />
+            <span className="text-sm font-medium">
+              Initializing GeoStrata Subsurface Node...
+            </span>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -401,7 +408,7 @@ export default function Dashboard() {
   // DASHBOARD
   // =====================================================
   return (
-    <div className="flex flex-col md:flex-row min-h-screen md:h-screen bg-[#07080c] text-slate-200 font-sans md:overflow-hidden relative">
+    <div className="flex min-h-screen flex-col md:h-screen md:flex-row md:overflow-hidden">
       {/* MOBILE NAVBAR */}
       <MobileNavbar
         isMobileMenuOpen={isMobileMenuOpen}
@@ -423,12 +430,12 @@ export default function Dashboard() {
       />
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <main className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 sm:gap-6 sm:p-6">
         {/* HEADER */}
         <DashboardHeader fetchData={fetchData} setIsReportOpen={setIsReportOpen} />
 
         {/* TOP ROW */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
           {/* BATTERY */}
           <BatteryCard
             currentBattery={currentBattery}
@@ -451,7 +458,7 @@ export default function Dashboard() {
         </div>
 
         {/* BOTTOM ROW */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
           {/* SENSOR MATRIX */}
           <SensorMatrix latest={latest} />
 

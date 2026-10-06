@@ -7,6 +7,19 @@ import {
   Sun,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+import { Separator } from "@/components/ui/separator";
+
 import BatterySpokeGauge from "./BatterySpokeGauge";
 
 interface BatteryCardProps {
@@ -23,69 +36,57 @@ export default function BatteryCard({
   lastSleepCycle,
 }: BatteryCardProps) {
   return (
-    <div className="lg:col-span-4 bg-[#0d0f17] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xs sm:text-sm font-semibold text-slate-300 tracking-wide flex items-center gap-2">
-            <BatteryCharging className="w-4 h-4 text-[#00e676]" />
-            Power System Health
-          </h2>
+    <Card className="lg:col-span-4">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BatteryCharging />
+          Power System Health
+        </CardTitle>
 
-          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
-            18650 CELL
-          </span>
-        </div>
+        <CardDescription>
+          <Badge variant="outline">18650 CELL</Badge>
+        </CardDescription>
+      </CardHeader>
 
-        <div className="grid grid-cols-3 text-center py-2 border-b border-white/5 text-xs gap-1">
-          {/* Battery Voltage */}
+      <CardContent className="flex flex-1 flex-col justify-between gap-4">
+        <div className="grid grid-cols-3 gap-1 text-center">
           <div>
-            <span className="text-slate-500 block text-[9px] sm:text-[10px] truncate">
-              BATTERY
-            </span>
-            <span className="font-bold text-white flex items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs">
-              <Zap className="w-3 h-3 text-yellow-400 shrink-0" />
+            <p className="text-muted-foreground text-xs">BATTERY</p>
+            <p className="flex items-center justify-center gap-1 font-medium">
+              <Zap className="size-3" />
               {currentBattery.toFixed(2)} V
-            </span>
+            </p>
           </div>
 
-          {/* Solar Panel Output */}
           <div>
-            <span className="text-slate-500 block text-[9px] sm:text-[10px] truncate">
-              SOLAR
-            </span>
-            <span className="font-bold text-amber-400 flex items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs">
-              <Sun className="w-3 h-3 text-amber-400 shrink-0" />
+            <p className="text-muted-foreground text-xs">SOLAR</p>
+            <p className="flex items-center justify-center gap-1 font-medium">
+              <Sun className="size-3" />
               {solarVoltage.toFixed(2)} V
-            </span>
+            </p>
           </div>
 
-          {/* Last Data Transmission */}
           <div>
-            <span className="text-slate-500 block text-[9px] sm:text-[10px] truncate">
-              LAST PING
-            </span>
-            <span className="font-bold text-white flex items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs">
-              <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+            <p className="text-muted-foreground text-xs">LAST PING</p>
+            <p className="flex items-center justify-center gap-1 font-medium">
+              <Clock className="size-3" />
               {lastSleepCycle} M
-            </span>
+            </p>
           </div>
         </div>
-      </div>
 
-      <BatterySpokeGauge
-        batteryVolts={currentBattery}
-        batteryPercent={batteryPercent}
-      />
+        <Separator />
 
-      <div className="pt-2 border-t border-white/5 text-[10px] sm:text-[11px] text-slate-400 flex justify-between items-center">
-        <span>
-          Source: Solar + Li-Ion
-        </span>
+        <BatterySpokeGauge
+          batteryVolts={currentBattery}
+          batteryPercent={batteryPercent}
+        />
+      </CardContent>
 
-        <span className="text-emerald-400 font-mono">
-          Deep Sleep Active
-        </span>
-      </div>
-    </div>
+      <CardFooter className="justify-between text-muted-foreground text-xs">
+        <span>Source: Solar + Li-Ion</span>
+        <Badge variant="secondary">Deep Sleep Active</Badge>
+      </CardFooter>
+    </Card>
   );
 }
